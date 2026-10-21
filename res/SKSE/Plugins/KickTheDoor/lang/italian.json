@@ -91,5 +91,22 @@
 	"Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).": "Vigore insufficiente. Sfondare una porta richiede {:.0f} (ne hai {:.0f}).",
 	"Not enough stamina. {} locks need {:.0f} (you have {:.0f}).": "Vigore insufficiente. Le serrature {} richiedono {:.0f} (ne hai {:.0f}).",
 	"The door shudders. One more kick should break the {} lock.": "La porta trema. Un altro calcio dovrebbe rompere la serratura {}.",
-	"The {} lock holds. It takes {} words of Unrelenting Force.": "La serratura {} regge. Servono {} parole di Forza Implacabile."
+	"The {} lock holds. It takes {} words of Unrelenting Force.": "La serratura {} regge. Servono {} parole di Forza Implacabile.",
+	"Automatic": "Automatico",
+	"Kick animation": "Animazione del calcio",
+	"Kick animations": "Animazioni del calcio",
+	"Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.": "I pacchetti di animazioni sono cartelle in Meshes\\KickTheDoor\\Animations. Automatico: viene usato il pacchetto con la priorità più alta le cui condizioni corrispondono al calcio (se contiene più animazioni, una a caso). La pagina Stato elenca i pacchetti trovati.",
+	"No animation packs found: the kick plays without an animation.": "Nessun pacchetto di animazioni trovato: il calcio avviene senza animazione.",
+	"Plays for every kick": "Usato per ogni calcio",
+	"Plays when: {}": "Usato quando: {}",
+	"({}, priority {}, {} animation(s))": "({}, priorità {}, {} animazione/i)",
+	"by {}": "di {}",
+	"weapon drawn": "arma sguainata",
+	"no weapon drawn": "nessuna arma sguainata",
+	"sneaking": "furtivo",
+	"not sneaking": "non furtivo",
+	"locked door": "porta chiusa a chiave",
+	"unlocked door": "porta non chiusa a chiave",
+	"female": "donna",
+	"male": "uomo"
 }

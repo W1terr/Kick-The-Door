@@ -91,5 +91,22 @@
 	"Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).": "耐力不足。踢開門需要 {:.0f}（你有 {:.0f}）。",
 	"Not enough stamina. {} locks need {:.0f} (you have {:.0f}).": "耐力不足。{}鎖需要 {:.0f}（你有 {:.0f}）。",
 	"The door shudders. One more kick should break the {} lock.": "門在顫動。再踢一腳應該就能破壞{}鎖。",
-	"The {} lock holds. It takes {} words of Unrelenting Force.": "{}鎖撐住了。需要 {} 個字的不屈之力。"
+	"The {} lock holds. It takes {} words of Unrelenting Force.": "{}鎖撐住了。需要 {} 個字的不屈之力。",
+	"Automatic": "自動",
+	"Kick animation": "踢擊動畫",
+	"Kick animations": "踢擊動畫",
+	"Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.": "動畫包是 Meshes\\KickTheDoor\\Animations 中的資料夾。自動：播放條件符合此次踢擊且優先度最高的動畫包（包內有多個動畫時隨機選一個）。找到的動畫包會列在狀態頁面。",
+	"No animation packs found: the kick plays without an animation.": "找不到動畫包：踢擊將沒有動畫。",
+	"Plays for every kick": "每次踢擊都播放",
+	"Plays when: {}": "播放條件：{}",
+	"({}, priority {}, {} animation(s))": "（{}，優先度 {}，{} 個動畫）",
+	"by {}": "作者：{}",
+	"weapon drawn": "武器已拔出",
+	"no weapon drawn": "未拔出武器",
+	"sneaking": "潛行中",
+	"not sneaking": "未潛行",
+	"locked door": "上鎖的門",
+	"unlocked door": "未上鎖的門",
+	"female": "女性",
+	"male": "男性"
 }

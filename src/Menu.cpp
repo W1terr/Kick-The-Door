@@ -9,6 +9,7 @@
 
 #include "Menu.h"
 
+#include "Clip.h"
 #include "Doors.h"
 #include "Forms.h"
 #include "Keys.h"
@@ -71,6 +72,67 @@ namespace Menu
 
 		const char* Level(int a_level) { return T(Doors::LevelName(a_level)); }
 
+		bool SameName(std::string_view a, std::string_view b)
+		{
+			return std::ranges::equal(a, b, [](char x, char y) { return std::tolower(static_cast<unsigned char>(x)) == std::tolower(static_cast<unsigned char>(y)); });
+		}
+
+		void AnimationCombo(std::string& a_pack)
+		{
+			const auto& packs = Clip::Packs();
+			std::string preview = T("Automatic");
+			for (const auto& pack : packs) {
+				if (SameName(pack.folder, a_pack)) {
+					preview = pack.name;
+				}
+			}
+			if (BeginCombo(Id("Kick animation").c_str(), preview.c_str())) {
+				if (Selectable(Id("Automatic").c_str(), a_pack == "auto")) {
+					a_pack = "auto";
+				}
+				for (const auto& pack : packs) {
+					if (pack.animations == 0) {
+						continue;
+					}
+					if (Selectable(std::format("{}###pack{}", pack.name, pack.folder).c_str(), SameName(pack.folder, a_pack))) {
+						a_pack = pack.folder;
+					}
+				}
+				EndCombo();
+			}
+		}
+
+		void PackList()
+		{
+			const auto& packs = Clip::Packs();
+			if (packs.empty()) {
+				TextColored(kBad, "%s", T("No animation packs found: the kick plays without an animation."));
+				return;
+			}
+			for (const auto& pack : packs) {
+				Bullet();
+				TextColored(pack.animations > 0 ? kGood : kBad, "%s", pack.name.c_str());
+				SameLine();
+				TextDisabled("%s", F("({}, priority {}, {} animation(s))", pack.folder, pack.priority, pack.animations).c_str());
+				Indent();
+				if (!pack.author.empty()) {
+					Text("%s", F("by {}", pack.author).c_str());
+				}
+				std::string when;
+				for (const auto& condition : pack.conditions) {
+					when += std::format("{}{}", when.empty() ? "" : ", ", T(condition.c_str()));
+				}
+				for (const auto& race : pack.races) {
+					when += std::format("{}{}", when.empty() ? "" : ", ", race);
+				}
+				Text("%s", when.empty() ? T("Plays for every kick") : F("Plays when: {}", when).c_str());
+				for (const auto& error : pack.errors) {
+					TextColored(kWarn, "%s", error.c_str());
+				}
+				Unindent();
+			}
+		}
+
 		void __stdcall RenderSettings()
 		{
 			std::scoped_lock lock(Settings::Lock());
@@ -104,6 +166,8 @@ namespace Menu
 			Hint("Without a visible body in first person you won't see the kick. With Improved Camera the view stays in first person.");
 			Checkbox(Id("Go through a kicked load door").c_str(), &s.enterLoadDoors);
 			Hint("A load door whose lock you kick in takes you through once the kick is over. Off: it only stays unlocked.");
+			AnimationCombo(s.animation);
+			Hint("Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.");
 
 			Heading("Locks");
 			TextWrapped("%s", T("Expert and Master locks always take two kicks. A kick needs at least the stamina shown and takes the cost when it lands; with less, the door only rattles."));
@@ -197,7 +261,7 @@ namespace Menu
 			Checkbox(Id("Log details (SKSE log)").c_str(), &s.debugLog);
 		}
 
-		void __stdcall RenderStatus()
+		void DoorStatus()
 		{
 			auto* const player = RE::PlayerCharacter::GetSingleton();
 			if (!player || !player->Is3DLoaded()) {
@@ -237,6 +301,13 @@ namespace Menu
 				Text("%s", F("Unrelenting Force: {} words", lock.shoutWords).c_str());
 			}
 			TextColored(preview->distance <= s.kickReach ? kGood : kWarn, "%s", F("{:.0f} units away (reach {:.0f})", preview->distance, s.kickReach).c_str());
+		}
+
+		void __stdcall RenderStatus()
+		{
+			DoorStatus();
+			Heading("Kick animations");
+			PackList();
 		}
 
 		void __stdcall RenderLanguages();

@@ -91,5 +91,22 @@
 	"Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).": "スタミナが足りない。扉を蹴破るには {:.0f} 必要(現在 {:.0f})。",
 	"Not enough stamina. {} locks need {:.0f} (you have {:.0f}).": "スタミナが足りない。{}の錠には {:.0f} 必要(現在 {:.0f})。",
 	"The door shudders. One more kick should break the {} lock.": "扉が揺らいだ。もう一蹴りで{}の錠が壊れそうだ。",
-	"The {} lock holds. It takes {} words of Unrelenting Force.": "{}の錠は持ちこたえた。揺るぎ無き力の言葉が{}つ必要だ。"
+	"The {} lock holds. It takes {} words of Unrelenting Force.": "{}の錠は持ちこたえた。揺るぎ無き力の言葉が{}つ必要だ。",
+	"Automatic": "自動",
+	"Kick animation": "蹴りのアニメーション",
+	"Kick animations": "蹴りのアニメーション",
+	"Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.": "アニメーションパックは Meshes\\KickTheDoor\\Animations 内のフォルダです。自動: 条件が蹴りに合うパックのうち優先度が最も高いものが再生されます(パック内に複数あればランダムに1つ)。見つかったパックは状態ページに表示されます。",
+	"No animation packs found: the kick plays without an animation.": "アニメーションパックが見つかりません。蹴りはアニメーションなしで行われます。",
+	"Plays for every kick": "すべての蹴りで再生",
+	"Plays when: {}": "再生条件: {}",
+	"({}, priority {}, {} animation(s))": "({}、優先度 {}、アニメーション {} 個)",
+	"by {}": "作者: {}",
+	"weapon drawn": "武器を構えている",
+	"no weapon drawn": "武器を収めている",
+	"sneaking": "隠密中",
+	"not sneaking": "隠密していない",
+	"locked door": "施錠された扉",
+	"unlocked door": "施錠されていない扉",
+	"female": "女性",
+	"male": "男性"
 }

@@ -15,7 +15,7 @@ add_requires("nlohmann_json")
 
 -- define targets
 target("KickTheDoor")
-    set_version("1.0.0")
+    set_version("1.1.0")
     add_rules("commonlibsse-ng.plugin", {
         name = "KickTheDoor",
         author = "W1ter",
@@ -39,5 +39,15 @@ target("niftest")
     set_default(false)
     add_deps("commonlibsse-ng")
     add_files("test/niftest.cpp", "src/DoorModel.cpp")
+    add_includedirs("src")
+    set_pcxxheader("src/pch.h")
+
+-- test: animation pack loading and picking (not shipped)
+target("packtest")
+    set_kind("binary")
+    set_default(false)
+    add_deps("commonlibsse-ng")
+    add_packages("nlohmann_json")
+    add_files("test/packtest.cpp", "src/Clip.cpp", "src/Forms.cpp", "src/Settings.cpp", "src/Keys.cpp")
     add_includedirs("src")
     set_pcxxheader("src/pch.h")

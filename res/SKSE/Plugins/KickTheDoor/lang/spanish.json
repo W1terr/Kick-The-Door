@@ -91,5 +91,22 @@
 	"Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).": "Aguante insuficiente. Abrir una puerta a patadas requiere {:.0f} (tienes {:.0f}).",
 	"Not enough stamina. {} locks need {:.0f} (you have {:.0f}).": "Aguante insuficiente. Las cerraduras de {} requieren {:.0f} (tienes {:.0f}).",
 	"The door shudders. One more kick should break the {} lock.": "La puerta tiembla. Otra patada debería romper la cerradura de {}.",
-	"The {} lock holds. It takes {} words of Unrelenting Force.": "La cerradura de {} resiste. Hacen falta {} palabras de Fuerza implacable."
+	"The {} lock holds. It takes {} words of Unrelenting Force.": "La cerradura de {} resiste. Hacen falta {} palabras de Fuerza implacable.",
+	"Automatic": "Automático",
+	"Kick animation": "Animación de la patada",
+	"Kick animations": "Animaciones de la patada",
+	"Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.": "Los paquetes de animaciones son carpetas en Meshes\\KickTheDoor\\Animations. Automático: se usa el paquete de mayor prioridad cuyas condiciones encajan con la patada (si tiene varias animaciones, una al azar). La página Estado muestra los paquetes encontrados.",
+	"No animation packs found: the kick plays without an animation.": "No se encontraron paquetes de animaciones: la patada se da sin animación.",
+	"Plays for every kick": "Se usa en cada patada",
+	"Plays when: {}": "Se usa cuando: {}",
+	"({}, priority {}, {} animation(s))": "({}, prioridad {}, {} animación(es))",
+	"by {}": "por {}",
+	"weapon drawn": "arma desenvainada",
+	"no weapon drawn": "sin arma desenvainada",
+	"sneaking": "a hurtadillas",
+	"not sneaking": "sin sigilo",
+	"locked door": "puerta cerrada con llave",
+	"unlocked door": "puerta sin cerrar",
+	"female": "mujer",
+	"male": "hombre"
 }

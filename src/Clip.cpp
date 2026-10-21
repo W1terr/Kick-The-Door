@@ -1,7 +1,11 @@
 #include "Clip.h"
 
+#include "Forms.h"
 #include "MathUtil.h"
 #include "Settings.h"
+
+#include <nlohmann/json.hpp>
+#include <random>
 
 namespace Clip
 {
@@ -125,9 +129,59 @@ namespace Clip
 			std::vector<std::string>      bones;   // per track, empty = not applied
 			std::vector<std::vector<Key>> frames;  // [frame][track]
 			float                         frameDuration{ 1.0f / 30.0f };
-		} clip;
+		};
 
-		Info info;
+		struct Info
+		{
+			std::string format;  // "spline compressed" / "uncompressed"
+			float       duration{ 0.0f };
+			int         frames{ 0 };
+			int         tracks{ 0 };
+			int         bones{ 0 };  // tracks that found a bone name
+			float       swing{ 0.0f };
+			float       impact{ 0.0f };
+			bool        swingMarked{ false };
+			bool        impactMarked{ false };
+		};
+
+		struct Animation
+		{
+			std::string file;  // "Pack/kick.hkx"
+			Data        data;
+			Info        info;
+		};
+
+		// config.json conditions: unset = either
+		struct Conditions
+		{
+			std::optional<bool>            female;
+			std::optional<bool>            weaponDrawn;
+			std::optional<bool>            sneaking;
+			std::optional<bool>            lockedDoor;
+			std::unordered_set<RE::FormID> races;  // empty = any
+			bool                           racesListed{ false };
+
+			bool Match(const Situation& a_s) const
+			{
+				return (!female || *female == a_s.female) && (!weaponDrawn || *weaponDrawn == a_s.weaponDrawn) &&
+				       (!sneaking || *sneaking == a_s.sneaking) && (!lockedDoor || *lockedDoor == a_s.lockedDoor) &&
+				       (!racesListed || races.contains(a_s.race));
+			}
+		};
+
+		struct AnimationPack
+		{
+			PackInfo             info;
+			Conditions           conditions;
+			std::optional<float> swing;  // override the files' markers
+			std::optional<float> impact;
+			bool                 keepArms{ true };
+			std::vector<int>     animations;
+		};
+
+		std::vector<Animation>     animations;
+		std::vector<AnimationPack> packs;
+		std::vector<PackInfo>      packInfos;
 
 		struct Error : std::runtime_error
 		{
@@ -560,11 +614,11 @@ namespace Clip
 			return a.size() == b.size() && std::ranges::equal(a, b, [](char x, char y) { return std::tolower(static_cast<unsigned char>(x)) == std::tolower(static_cast<unsigned char>(y)); });
 		}
 
-		void Read(Data& a_out, Info& a_info)
+		void Read(const std::filesystem::path& a_path, Data& a_out, Info& a_info)
 		{
-			std::ifstream file(kPath, std::ios::binary);
+			std::ifstream file(a_path, std::ios::binary);
 			if (!file) {
-				throw Error("not found");
+				throw Error("can't be opened");
 			}
 			Pack pack(std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), {}));
 
@@ -678,7 +732,8 @@ namespace Clip
 		struct Player
 		{
 			RE::NiPointer<RE::NiAVObject> root;
-			std::vector<Joint>            joints;  // per track
+			int                           animation{ -1 };   // the joints below are bound for this one
+			std::vector<Joint>            joints;            // per track
 			int                           convention{ -1 };  // -1 unknown, 0 as Havok's matrix, 1 transposed
 		} player;
 
@@ -698,15 +753,15 @@ namespace Clip
 			return a_transposed ? m.Transpose() : m;
 		}
 
-		Key Sample(float a_time, std::size_t a_track)
+		Key Sample(const Data& a_clip, float a_time, std::size_t a_track)
 		{
-			const auto  last = clip.frames.size() - 1;
-			const float f = std::clamp(a_time / clip.frameDuration, 0.0f, static_cast<float>(last));
+			const auto  last = a_clip.frames.size() - 1;
+			const float f = std::clamp(a_time / a_clip.frameDuration, 0.0f, static_cast<float>(last));
 			const auto  i = std::min(static_cast<std::size_t>(f), last);
 			const auto  j = std::min(i + 1, last);
 			const float u = f - static_cast<float>(i);
-			const auto& a = clip.frames[i][a_track];
-			auto        b = clip.frames[j][a_track];
+			const auto& a = a_clip.frames[i][a_track];
+			auto        b = a_clip.frames[j][a_track];
 			if (a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w < 0.0f) {
 				b.x = -b.x;
 				b.y = -b.y;
@@ -727,10 +782,12 @@ namespace Clip
 			return k;
 		}
 
-		void Bind(RE::NiAVObject* a_root)
+		void Bind(RE::NiAVObject* a_root, int a_animation)
 		{
 			Release();
+			const auto& clip = animations[static_cast<std::size_t>(a_animation)].data;
 			player.root.reset(a_root);
+			player.animation = a_animation;
 			player.joints.assign(clip.bones.size(), {});
 			int found = 0;
 			for (std::size_t t = 0; t < clip.bones.size(); ++t) {
@@ -745,24 +802,25 @@ namespace Clip
 				}
 			}
 			if (Settings::Get().debugLog) {
-				logs::info("Kick animation: {} of {} tracks found a bone on the player", found, clip.bones.size());
+				logs::info("Kick animation {}: {} of {} tracks found a bone on the player", animations[static_cast<std::size_t>(a_animation)].file, found,
+					clip.bones.size());
 			}
 		}
 
 		// Havok's quaternion should turn into the node's rotation as is; checked once against the animated pose of a
-		// few bones (the clip starts from a standing pose), in case the game stores it the other way round
-		void Detect()
+		// few bones (a kick starts from a standing pose), in case the game stores it the other way round
+		void Detect(const Data& a_clip)
 		{
 			std::array<float, 2> error{};
 			int                  compared = 0;
 			for (std::size_t t = 0; t < player.joints.size(); ++t) {
-				const auto& name = clip.bones[t];
+				const auto& name = a_clip.bones[t];
 				if (!player.joints[t].node || !(name.find("Thigh") != std::string::npos || name.find("Calf") != std::string::npos ||
 													name.find("Spine") != std::string::npos || name.find("Neck") != std::string::npos)) {
 					continue;
 				}
 				for (int c = 0; c < 2; ++c) {
-					error[static_cast<std::size_t>(c)] += M::Angle(player.joints[t].node->local.rotate.Transpose() * Matrix(clip.frames[0][t], c == 1));
+					error[static_cast<std::size_t>(c)] += M::Angle(player.joints[t].node->local.rotate.Transpose() * Matrix(a_clip.frames[0][t], c == 1));
 				}
 				++compared;
 			}
@@ -770,42 +828,227 @@ namespace Clip
 			logs::info("Kick animation vs the animated pose ({} bones): {:.0f} deg as is, {:.0f} deg transposed -> {}", compared,
 				error[0] / M::kDegrees, error[1] / M::kDegrees, player.convention == 0 ? "as is" : "transposed");
 		}
+
+		// ---- animation packs -------------------------------------------------------------------------------------------
+
+		std::string Utf8(const std::filesystem::path& a_path)
+		{
+			const auto text = a_path.u8string();
+			return { text.begin(), text.end() };
+		}
+
+		std::string Lower(std::string a_text)
+		{
+			std::ranges::transform(a_text, a_text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			return a_text;
+		}
+
+		// config.json of a pack (comments allowed); unknown keys are ignored
+		void ReadConfig(const std::filesystem::path& a_path, AnimationPack& a_pack)
+		{
+			std::ifstream file(a_path);
+			const auto    j = nlohmann::json::parse(file, nullptr, true, true);
+			if (!j.is_object()) {
+				throw Error("not a json object");
+			}
+			auto& info = a_pack.info;
+			info.name = j.value("name", info.name);
+			info.author = j.value("author", info.author);
+			info.priority = j.value("priority", info.priority);
+			a_pack.keepArms = j.value("keepArmsWithWeapon", a_pack.keepArms);
+			if (j.contains("swing") && j["swing"].is_number()) {
+				a_pack.swing = j["swing"].get<float>();
+			}
+			if (j.contains("impact") && j["impact"].is_number()) {
+				a_pack.impact = j["impact"].get<float>();
+			}
+			if (!j.contains("conditions")) {
+				return;
+			}
+			const auto& c = j["conditions"];
+			auto&       conditions = a_pack.conditions;
+			auto        flag = [&](const char* a_key, std::optional<bool>& a_out, const char* a_yes, const char* a_no) {
+				if (c.contains(a_key) && c[a_key].is_boolean()) {
+					a_out = c[a_key].get<bool>();
+					info.conditions.emplace_back(*a_out ? a_yes : a_no);
+				}
+			};
+			if (c.contains("sex") && c["sex"].is_string()) {
+				const auto sex = Lower(c["sex"].get<std::string>());
+				if (sex == "female" || sex == "male") {
+					conditions.female = sex == "female";
+					info.conditions.emplace_back(*conditions.female ? "female" : "male");
+				}
+			}
+			flag("weaponDrawn", conditions.weaponDrawn, "weapon drawn", "no weapon drawn");
+			flag("sneaking", conditions.sneaking, "sneaking", "not sneaking");
+			flag("lockedDoor", conditions.lockedDoor, "locked door", "unlocked door");
+			if (c.contains("races") && c["races"].is_array()) {
+				conditions.racesListed = true;
+				for (const auto& entry : c["races"]) {
+					if (!entry.is_string()) {
+						continue;
+					}
+					const auto spec = entry.get<std::string>();
+					if (auto* const race = Forms::Resolve(spec); race && race->Is(RE::FormType::Race)) {
+						conditions.races.insert(race->GetFormID());
+						info.races.push_back(spec);
+					} else {
+						info.errors.push_back(std::format("config.json: race '{}' not found", spec));
+					}
+				}
+			}
+		}
+
+		void LoadPack(const std::filesystem::path& a_folder)
+		{
+			AnimationPack pack;
+			auto& info = pack.info;
+			info.folder = Utf8(a_folder.filename());
+			info.name = info.folder;
+			info.priority = 1;  // above the mod's own kick (config.json of "Default": 0)
+
+			std::vector<std::filesystem::path> files;
+			std::error_code                    ec;
+			for (const auto& entry : std::filesystem::directory_iterator(a_folder, ec)) {
+				const auto name = Lower(Utf8(entry.path().filename()));
+				if (!entry.is_regular_file(ec)) {
+					continue;
+				}
+				if (name == "config.json") {
+					try {
+						ReadConfig(entry.path(), pack);
+					} catch (const std::exception& e) {
+						info.errors.push_back(std::format("config.json: {}", e.what()));
+					}
+				} else if (name.ends_with(".hkx")) {
+					files.push_back(entry.path());
+				}
+			}
+			std::ranges::sort(files);
+
+			for (const auto& path : files) {
+				Animation animation;
+				animation.file = std::format("{}/{}", info.folder, Utf8(path.filename()));
+				try {
+					Read(path, animation.data, animation.info);
+				} catch (const std::exception& e) {
+					info.errors.push_back(std::format("{}: {}", Utf8(path.filename()), e.what()));
+					logs::error("Kick animation {}: {}", animation.file, e.what());
+					continue;
+				}
+				const auto& a = animation.info;
+				logs::info("Kick animation {}: {}, {:.2f} s, {} frames, {} tracks ({} bones), swing {:.2f} s{}, impact {:.2f} s{}", animation.file,
+					a.format, a.duration, a.frames, a.tracks, a.bones, a.swing, a.swingMarked ? "" : " (default)", a.impact, a.impactMarked ? "" : " (default)");
+				pack.animations.push_back(static_cast<int>(animations.size()));
+				animations.push_back(std::move(animation));
+			}
+			if (files.empty()) {
+				info.errors.emplace_back("no .hkx files");
+			}
+			info.animations = static_cast<int>(pack.animations.size());
+			logs::info("Animation pack '{}' ({}): priority {}, {} animation(s){}", info.name, info.folder, info.priority, info.animations,
+				info.errors.empty() ? "" : std::format(", {} problem(s)", info.errors.size()));
+			packs.push_back(std::move(pack));
+		}
+
+		std::size_t PackOf(int a_animation)
+		{
+			for (std::size_t p = 0; p < packs.size(); ++p) {
+				if (std::ranges::find(packs[p].animations, a_animation) != packs[p].animations.end()) {
+					return p;
+				}
+			}
+			return 0;
+		}
+
+		int Random(int a_count)
+		{
+			static std::mt19937 rng{ std::random_device{}() };
+			return std::uniform_int_distribution<int>(0, a_count - 1)(rng);
+		}
 	}
 
 	void Load()
 	{
 		Release();
-		Data fresh;
-		Info loaded;
-		try {
-			Read(fresh, loaded);
-			loaded.loaded = true;
-			logs::info("Kick animation {}: {}, {:.2f} s, {} frames, {} tracks ({} bones), swing {:.2f} s{}, impact {:.2f} s{}", kPath, loaded.format,
-				loaded.duration, loaded.frames, loaded.tracks, loaded.bones, loaded.swing, loaded.swingMarked ? "" : " (default)", loaded.impact,
-				loaded.impactMarked ? "" : " (default)");
-		} catch (const std::exception& e) {
-			loaded = {};
-			loaded.error = e.what();
-			fresh = {};
-			logs::error("Kick animation {}: {} - the kick plays without it", kPath, loaded.error);
+		animations.clear();
+		packs.clear();
+		std::error_code                    ec;
+		std::vector<std::filesystem::path> folders;
+		for (const auto& entry : std::filesystem::directory_iterator(kFolder, ec)) {
+			if (entry.is_directory(ec)) {
+				folders.push_back(entry.path());
+			}
 		}
-		clip = std::move(fresh);
-		player.convention = -1;
-		info = std::move(loaded);
+		if (ec && folders.empty()) {
+			logs::error("{} is missing: the kick plays without an animation", kFolder);
+		}
+		std::ranges::sort(folders, [](const auto& a, const auto& b) { return Lower(Utf8(a.filename())) < Lower(Utf8(b.filename())); });
+		for (const auto& folder : folders) {
+			LoadPack(folder);
+		}
+		packInfos.clear();
+		for (const auto& pack : packs) {
+			packInfos.push_back(pack.info);
+		}
 	}
 
-	const Info& GetInfo() { return info; }
-
-	bool Ready() { return !clip.frames.empty(); }
-
-	void Apply(RE::Actor* a_player, float a_time, float a_weight, bool a_keepArms)
+	std::optional<Choice> Pick(const Situation& a_situation, std::string_view a_pack)
 	{
-		auto* const root = a_player && Ready() ? a_player->Get3D(false) : nullptr;
-		if (!root) {
+		std::vector<int> pool;
+		if (a_pack != "auto") {
+			for (const auto& pack : packs) {
+				if (Lower(pack.info.folder) == Lower(std::string(a_pack))) {
+					pool = pack.animations;
+				}
+			}
+		}
+		if (pool.empty()) {
+			// the highest priority that matches; packs with the same priority are mixed
+			std::optional<int> best;
+			for (const auto& pack : packs) {
+				if (pack.animations.empty() || !pack.conditions.Match(a_situation)) {
+					continue;
+				}
+				if (!best || pack.info.priority > *best) {
+					best = pack.info.priority;
+					pool.clear();
+				}
+				if (pack.info.priority == *best) {
+					pool.insert(pool.end(), pack.animations.begin(), pack.animations.end());
+				}
+			}
+		}
+		if (pool.empty()) {
+			return std::nullopt;
+		}
+		const int   index = pool[static_cast<std::size_t>(Random(static_cast<int>(pool.size())))];
+		const auto& info = animations[static_cast<std::size_t>(index)].info;
+		const auto& pack = packs[PackOf(index)];
+		Choice      choice;
+		choice.animation = index;
+		choice.duration = info.duration;
+		choice.impact = pack.impact.value_or(info.impact);
+		choice.swing = pack.swing ? *pack.swing : info.swingMarked || !pack.impact ? info.swing : choice.impact * 0.6f;
+		choice.keepArms = pack.keepArms;
+		if (Settings::Get().debugLog) {
+			logs::info("Kick animation picked: {} (of {})", animations[static_cast<std::size_t>(index)].file, pool.size());
+		}
+		return choice;
+	}
+
+	const std::vector<PackInfo>& Packs() { return packInfos; }
+
+	void Apply(RE::Actor* a_player, int a_animation, float a_time, float a_weight, bool a_keepArms)
+	{
+		auto* const root = a_player ? a_player->Get3D(false) : nullptr;
+		if (!root || a_animation < 0 || a_animation >= static_cast<int>(animations.size())) {
 			return;
 		}
-		if (root != player.root.get() || player.joints.size() != clip.bones.size()) {
-			Bind(root);
+		const auto& clip = animations[static_cast<std::size_t>(a_animation)].data;
+		if (root != player.root.get() || player.animation != a_animation) {
+			Bind(root, a_animation);
 		}
 		// take back what the animation didn't overwrite since the last frame
 		for (auto& joint : player.joints) {
@@ -822,7 +1065,7 @@ namespace Clip
 			joint.wrote = false;
 		}
 		if (player.convention < 0) {
-			Detect();
+			Detect(clip);
 		}
 		const bool  transposed = player.convention == 1;
 		const float weight = std::clamp(a_weight, 0.0f, 1.0f);
@@ -831,7 +1074,7 @@ namespace Clip
 			if (!joint.node || (a_keepArms && joint.arm) || weight <= 0.0f) {
 				continue;
 			}
-			const auto key = Sample(a_time, t);
+			const auto key = Sample(clip, a_time, t);
 			const auto rotate = Matrix(key, transposed);
 			joint.node->local.rotate = weight >= 1.0f ? rotate : M::Slerp(joint.baseRotate, rotate, weight);
 			// translations as offsets from the clip's first frame: the player's own proportions stay
@@ -861,5 +1104,6 @@ namespace Clip
 		}
 		player.joints.clear();
 		player.root.reset();
+		player.animation = -1;
 	}
 }

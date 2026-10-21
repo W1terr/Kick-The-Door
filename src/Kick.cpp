@@ -32,7 +32,8 @@ namespace Kick
 		struct State
 		{
 			bool               active{ false };
-			bool               clip{ false };  // playing kick.hkx (missing: the kick happens without an animation)
+			int                animation{ -1 };  // the kick animation playing (none: the kick happens without one)
+			bool               keepArms{ true }; // with a weapon drawn the arms keep the weapon stance
 			Timing             timing;
 			float              time{ 0.0f };
 			RE::ObjectRefHandle door;
@@ -173,10 +174,16 @@ namespace Kick
 			state.startHeading = a_player->GetAngleZ();
 			state.heading = std::atan2(state.face.x, state.face.y);
 			state.step = std::clamp(distance - kStandOff, 0.0f, kMaxStep);
-			state.clip = Clip::Ready();
-			if (state.clip) {
-				const auto& clip = Clip::GetInfo();
-				state.timing = { std::clamp(clip.swing, 0.0f, clip.duration), std::clamp(clip.impact, 0.05f, clip.duration), clip.duration };
+			Clip::Situation situation;
+			situation.female = a_player->GetActorBase() && a_player->GetActorBase()->GetSex() == RE::SEX::kFemale;
+			situation.weaponDrawn = a_player->AsActorState()->IsWeaponDrawn();
+			situation.sneaking = a_player->IsSneaking();
+			situation.lockedDoor = target.level != Settings::kUnlocked;
+			situation.race = a_player->GetRace() ? a_player->GetRace()->GetFormID() : 0;
+			if (const auto clip = Clip::Pick(situation, s.animation)) {
+				state.animation = clip->animation;
+				state.keepArms = clip->keepArms;
+				state.timing = { std::clamp(clip->swing, 0.0f, clip->duration), std::clamp(clip->impact, 0.05f, clip->duration), clip->duration };
 			}
 			BlockControls(true);
 			if (s.firstPerson == 1 && !ImprovedCamera()) {
@@ -309,11 +316,10 @@ namespace Kick
 
 	void ApplyPose()
 	{
-		if (state.active && state.clip) {
-			// with a weapon drawn the arms keep the weapon stance
+		if (state.active && state.animation >= 0) {
 			auto* const player = RE::PlayerCharacter::GetSingleton();
 			const float weight = std::min(M::Smooth(state.time / kFadeIn), M::Smooth((state.timing.end - state.time) / kFadeOut));
-			Clip::Apply(player, state.time, weight, player->AsActorState()->IsWeaponDrawn());
+			Clip::Apply(player, state.animation, state.time, weight, state.keepArms && player->AsActorState()->IsWeaponDrawn());
 		}
 	}
 

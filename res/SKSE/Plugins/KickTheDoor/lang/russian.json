@@ -91,5 +91,22 @@
 	"Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).": "Не хватает запаса сил. Чтобы выбить дверь, нужно {:.0f} (у вас {:.0f}).",
 	"Not enough stamina. {} locks need {:.0f} (you have {:.0f}).": "Не хватает запаса сил. Замкам уровня «{}» нужно {:.0f} (у вас {:.0f}).",
 	"The door shudders. One more kick should break the {} lock.": "Дверь содрогается. Ещё один удар — и замок уровня «{}» не выдержит.",
-	"The {} lock holds. It takes {} words of Unrelenting Force.": "Замок уровня «{}» выдержал. Нужно слов Безжалостной силы: {}."
+	"The {} lock holds. It takes {} words of Unrelenting Force.": "Замок уровня «{}» выдержал. Нужно слов Безжалостной силы: {}.",
+	"Automatic": "Автоматически",
+	"Kick animation": "Анимация удара",
+	"Kick animations": "Анимации удара",
+	"Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.": "Наборы анимаций — это папки в Meshes\\KickTheDoor\\Animations. Автоматически: играет набор с наивысшим приоритетом, условия которого подходят к удару (если в наборе несколько анимаций — случайная). На странице «Состояние» видны найденные наборы.",
+	"No animation packs found: the kick plays without an animation.": "Наборы анимаций не найдены: удар идёт без анимации.",
+	"Plays for every kick": "Играет при каждом ударе",
+	"Plays when: {}": "Играет, когда: {}",
+	"({}, priority {}, {} animation(s))": "({}, приоритет {}, анимаций: {})",
+	"by {}": "автор: {}",
+	"weapon drawn": "оружие обнажено",
+	"no weapon drawn": "оружие убрано",
+	"sneaking": "в скрытности",
+	"not sneaking": "не в скрытности",
+	"locked door": "запертая дверь",
+	"unlocked door": "незапертая дверь",
+	"female": "женщина",
+	"male": "мужчина"
 }

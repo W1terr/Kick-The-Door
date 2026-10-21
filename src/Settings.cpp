@@ -139,6 +139,7 @@ namespace Settings
 					Float("Kick", "fReach", v.kickReach, 80.0f, 300.0f),
 					Int("Kick", "iFirstPerson", v.firstPerson, 0, 1),
 					Bool("Kick", "bEnterLoadDoors", v.enterLoadDoors),
+					Text("Kick", "sAnimation", v.animation),
 					Float("UnrelentingForce", "fMaxDistance", v.shoutDistance, 200.0f, 5000.0f),
 					Bool("UnrelentingForce", "bUnlockedDoors", v.shoutUnlocked),
 					Bool("Locks", "bUnlocked", v.unlocked.enabled),

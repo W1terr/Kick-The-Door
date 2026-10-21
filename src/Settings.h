@@ -40,6 +40,7 @@ namespace Settings
 		float kickReach{ 170.0f };      // the farthest the player may stand from the door
 		int   firstPerson{ 1 };         // 0: the kick stays in 1st person, 1: the camera goes to 3rd person for it
 		bool  enterLoadDoors{ true };   // a kicked load door takes you through right away
+		std::string animation{ "auto" };  // animation pack folder (Meshes\KickTheDoor\Animations\<pack>) or "auto"
 
 		std::array<LockRule, kLevels> locks{ {
 			{ true, 120.0f, 30.0f, 1 },

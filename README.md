@@ -6,6 +6,7 @@ SKSE plugin for Skyrim SE / AE: kick doors open, or blast them open with Unrelen
 - **Unrelenting Force**: the first door the shout's wave reaches bursts open; a locked one only if the shout had enough words for its lock (Fus / Fus Ro / Fus Ro Dah per lock level).
 - The door bursts open faster than usual and away from you, whichever way it normally opens. Whoever stands right behind it is knocked over. A kicked-in load door takes you through.
 - Own kick animation (played by the plugin, no Nemesis / Pandora / OAR needed) and door impact sound.
+- Kick animations can be replaced or added as animation packs: a folder with .hkx files and an optional config.json (priority, conditions like sex, weapon drawn, sneaking, race). See [ANIMATIONS.md](ANIMATIONS.md).
 - Never forced: locks that need a key, quest doors, barred doors (door replacers like Glorious Doors of Skyrim whose doors unbar themselves before they swing), display cases, hatches and trap triggers. Each lock level can be switched off.
 - Breaking an owned lock in front of witnesses is trespassing, as picking it is.
 - Menu and messages in English, French, German, Italian, Spanish, Polish, Russian, Japanese and Chinese.

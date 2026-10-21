@@ -91,5 +91,22 @@
 	"Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).": "Pas assez de Vigueur. Enfoncer une porte en demande {:.0f} (vous en avez {:.0f}).",
 	"Not enough stamina. {} locks need {:.0f} (you have {:.0f}).": "Pas assez de Vigueur. Les serrures {} en demandent {:.0f} (vous en avez {:.0f}).",
 	"The door shudders. One more kick should break the {} lock.": "La porte tremble. Un coup de plus devrait briser la serrure {}.",
-	"The {} lock holds. It takes {} words of Unrelenting Force.": "La serrure {} tient bon. Il faut {} mots de Déferlement implacable."
+	"The {} lock holds. It takes {} words of Unrelenting Force.": "La serrure {} tient bon. Il faut {} mots de Déferlement implacable.",
+	"Automatic": "Automatique",
+	"Kick animation": "Animation du coup de pied",
+	"Kick animations": "Animations du coup de pied",
+	"Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.": "Les packs d'animations sont des dossiers dans Meshes\\KickTheDoor\\Animations. Automatique : le pack de plus haute priorité dont les conditions correspondent au coup est joué (s'il contient plusieurs animations, l'une au hasard). La page État liste les packs trouvés.",
+	"No animation packs found: the kick plays without an animation.": "Aucun pack d'animations trouvé : le coup est donné sans animation.",
+	"Plays for every kick": "Joué à chaque coup",
+	"Plays when: {}": "Joué quand : {}",
+	"({}, priority {}, {} animation(s))": "({}, priorité {}, {} animation(s))",
+	"by {}": "par {}",
+	"weapon drawn": "arme dégainée",
+	"no weapon drawn": "arme rengainée",
+	"sneaking": "en mode discrétion",
+	"not sneaking": "hors discrétion",
+	"locked door": "porte verrouillée",
+	"unlocked door": "porte non verrouillée",
+	"female": "femme",
+	"male": "homme"
 }
