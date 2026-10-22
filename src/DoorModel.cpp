@@ -126,24 +126,32 @@ namespace DoorModel
 			return nif;
 		}
 
-		// rotation about the parent's vertical (z) axis of a NiTransformInterpolator's keys: (largest turn from the
-		// first key in degrees, time of the last key before it starts turning)
-		std::pair<float, float> VerticalTurn(std::span<const std::uint8_t> a_data, const Nif& a_nif, const Block& a_interp)
+		struct Turn
+		{
+			float        degrees{ 0.0f };
+			RE::NiPoint3 axis;
+			float        still{ 0.0f };  // time of the last key before it starts turning
+		};
+
+		// the largest turn of a NiTransformInterpolator's rotation keys from the first one, in the parent's space
+		Turn KeyTurn(std::span<const std::uint8_t> a_data, const Nif& a_nif, const Block& a_interp)
 		{
 			Reader r(a_data, a_interp.offset);
 			r.Skip(4 * 8);  // translation, rotation (quaternion), scale
 			const auto* data = a_nif.At(r.Get<std::int32_t>());
 			if (!data || data->type != "NiTransformData") {
-				return { 0.0f, 0.0f };
+				return {};
 			}
 			Reader d(a_data, data->offset);
 			const auto rotationKeys = d.Get<std::uint32_t>();
 			if (rotationKeys == 0) {
-				return { 0.0f, 0.0f };
+				return {};
 			}
-			const auto kind = d.Get<std::uint32_t>();
-			std::vector<std::pair<float, float>> keys;  // time, angle about z (radians) from the first key
-			if (kind == 4) {  // XYZ: three float curves, z is the third
+			const auto                           kind = d.Get<std::uint32_t>();
+			Turn                                 result;
+			std::vector<std::pair<float, float>> keys;  // time, angle from the first key (radians)
+			if (kind == 4) {  // XYZ: three float curves; the axis whose curve changes most
+				std::array<std::vector<std::pair<float, float>>, 3> curves;
 				for (int axis = 0; axis < 3; ++axis) {
 					const auto n = d.Get<std::uint32_t>();
 					if (n == 0) {
@@ -158,21 +166,30 @@ namespace DoorModel
 						} else if (floatKind == 3) {
 							d.Skip(12);
 						}
-						if (axis == 2) {
-							keys.emplace_back(time, value);
+						curves[static_cast<std::size_t>(axis)].emplace_back(time, value);
+					}
+				}
+				float widest = 0.0f;
+				for (int axis = 0; axis < 3; ++axis) {
+					const auto& c = curves[static_cast<std::size_t>(axis)];
+					float       span = 0.0f;
+					for (const auto& [t, v] : c) {
+						span = std::max(span, std::abs(v - c.front().second));
+					}
+					if (span > widest) {
+						widest = span;
+						keys.clear();
+						for (const auto& [t, v] : c) {
+							keys.emplace_back(t, v - c.front().second);
 						}
+						result.axis = { axis == 0 ? 1.0f : 0.0f, axis == 1 ? 1.0f : 0.0f, axis == 2 ? 1.0f : 0.0f };
 					}
 				}
-				if (!keys.empty()) {
-					const float first = keys.front().second;
-					for (auto& [t, v] : keys) {
-						v -= first;
-					}
-				}
-			} else {  // quaternion keys: the turn from the first key, if it is about a vertical axis
+			} else {  // quaternion keys
 				std::array<float, 4> first{};
+				float                widest = 0.0f;
 				for (std::uint32_t k = 0; k < rotationKeys; ++k) {
-					const float time = d.Get<float>();
+					const float          time = d.Get<float>();
 					std::array<float, 4> q{ d.Get<float>(), d.Get<float>(), d.Get<float>(), d.Get<float>() };  // w x y z
 					if (kind == 3) {
 						d.Skip(12);
@@ -180,28 +197,31 @@ namespace DoorModel
 					if (k == 0) {
 						first = q;
 					}
-					// q * conj(first)
+					// q * conj(first): the turn from the first key, in the parent's space
 					const float w = q[0] * first[0] + q[1] * first[1] + q[2] * first[2] + q[3] * first[3];
-					const float z = -q[0] * first[3] - q[1] * first[2] + q[2] * first[1] + q[3] * first[0];
 					const float x = -q[0] * first[1] + q[1] * first[0] - q[2] * first[3] + q[3] * first[2];
 					const float y = -q[0] * first[2] + q[1] * first[3] + q[2] * first[0] - q[3] * first[1];
+					const float z = -q[0] * first[3] - q[1] * first[2] + q[2] * first[1] + q[3] * first[0];
 					const float sine = std::sqrt(x * x + y * y + z * z);
 					const float angle = 2.0f * std::atan2(sine, std::abs(w));
-					keys.emplace_back(time, sine > 1e-6f && std::abs(z) / sine > 0.7f ? angle : 0.0f);
+					keys.emplace_back(time, angle);
+					if (angle > widest && sine > 1e-6f) {
+						widest = angle;
+						result.axis = { x / sine, y / sine, z / sine };
+					}
 				}
 			}
-			float turn = 0.0f;
 			for (const auto& [t, v] : keys) {
-				turn = std::max(turn, std::abs(v));
+				result.degrees = std::max(result.degrees, std::abs(v) * 57.29578f);
 			}
-			float still = keys.empty() ? 0.0f : keys.front().first;
+			result.still = keys.empty() ? 0.0f : keys.front().first;
 			for (const auto& [t, v] : keys) {
 				if (std::abs(v) > 0.0002f) {  // ~0.01 degrees
 					break;
 				}
-				still = t;
+				result.still = t;
 			}
-			return { turn * 57.29578f, still };
+			return result;
 		}
 	}
 
@@ -240,22 +260,16 @@ namespace DoorModel
 			const float start = r.Get<float>();
 			const float stop = r.Get<float>();
 
-			Info  info;
-			float best = 20.0f;  // a panel turns at least this far about the vertical
+			Info info;
 			info.length = stop - start;
 			for (const auto& c : controlled) {
 				const auto* interp = nif.At(c.interp);
 				if (!interp || interp->type != "NiTransformInterpolator") {
 					continue;
 				}
-				const auto [turn, still] = VerticalTurn(a_nif, nif, *interp);
-				if (turn > 20.0f) {
-					info.panels.push_back(c.node);
-				}
-				if (turn > best) {
-					best = turn;
-					info.panel = c.node;
-					info.panelStart = std::max(still - start, 0.0f);
+				const auto turn = KeyTurn(a_nif, nif, *interp);
+				if (turn.degrees > kMinTurn) {
+					info.parts.push_back({ c.node, turn.degrees, turn.axis, std::max(turn.still - start, 0.0f) });
 				}
 			}
 			return info;
@@ -294,12 +308,11 @@ namespace DoorModel
 			}
 			info = Parse(bytes);
 			if (info) {
-				std::string panels;
-				for (const auto& p : info->panels) {
-					panels += std::format("'{}' ", p);
+				std::string parts;
+				for (const auto& p : info->parts) {
+					parts += std::format("'{}' {:.0f} deg about ({:.2f} {:.2f} {:.2f}) from {:.2f} s; ", p.name, p.turn, p.axis.x, p.axis.y, p.axis.z, p.start);
 				}
-				logs::info("[swing] {}: Open {:.2f} s, swinging part(s) {}- the first starts at {:.2f} s", file, info->length, panels.empty() ? "none " : panels,
-					info->panelStart);
+				logs::info("[swing] {}: Open {:.2f} s, turning part(s): {}", file, info->length, parts.empty() ? "none" : parts);
 			} else {
 				logs::info("[swing] {}: no Open sequence in the model", file);
 			}

@@ -18,6 +18,7 @@ namespace Doors
 		constexpr float kBehindDepth = 120.0f;  // how far behind the panel an actor still gets hit
 		constexpr float kBehindSide = 45.0f;    // and how far past its edges
 		constexpr float kKnockCooldown = 4.0f;  // the same actor isn't knocked over again this soon
+		constexpr float kPanelHalfThickness = 10.0f;  // a door's half thickness when its plane comes from the hinges
 
 		struct Sounds
 		{
@@ -169,6 +170,70 @@ namespace Doors
 		NiPoint3 Axis(const RE::NiMatrix3& a_m)
 		{
 			return Normalized(NiPoint3{ a_m.entry[2][1] - a_m.entry[1][2], a_m.entry[0][2] - a_m.entry[2][0], a_m.entry[1][0] - a_m.entry[0][1] });
+		}
+
+		// the door's wings: the parts its model turns about an axis that is vertical where the door stands (a handle or
+		// a knob turns about another axis; some models lie on their side in the file and the reference stands them up)
+		struct Wing
+		{
+			RE::NiAVObject* node{ nullptr };
+			float           turn{ 0.0f };   // degrees
+			float           start{ 0.0f };  // seconds into the Open sequence before it swings
+		};
+
+		std::vector<Wing> FindWings(RE::NiAVObject* a_root, const DoorModel::Info& a_model)
+		{
+			std::vector<Wing> wings;
+			for (const auto& part : a_model.parts) {
+				auto* const node = a_root->GetObjectByName(RE::BSFixedString(part.name.c_str()));
+				if (!node) {
+					continue;
+				}
+				const auto* space = node->parent ? node->parent : node;
+				if (std::abs((space->world.rotate * part.axis).z) >= kHingeUp) {
+					wings.push_back({ node, part.turn, part.start });
+				}
+			}
+			return wings;
+		}
+
+		// A door's wings, found once per loaded 3D (searching the model's nodes on every check would be wasted: the
+		// kick, the menu's status page and every shout wave ask). Holds the 3D, so the node pointers stay valid; a door
+		// that reloaded gets a new 3D and is looked up again.
+		struct Hinges
+		{
+			RE::NiPointer<RE::NiAVObject> root;
+			std::vector<Wing>             wings;
+			float                         start{ 0.0f };  // when the widest wing starts to swing (s into Open)
+		};
+
+		std::mutex                             hingeLock;  // the menu thread asks too
+		std::unordered_map<RE::FormID, Hinges> hinges;
+		constexpr std::size_t                  kMaxHinges = 32;
+
+		Hinges HingesOf(RE::TESObjectREFR* a_ref)
+		{
+			auto* const root = a_ref ? a_ref->Get3D() : nullptr;
+			if (!root) {
+				return {};
+			}
+			std::scoped_lock guard(hingeLock);
+			if (const auto it = hinges.find(a_ref->GetFormID()); it != hinges.end() && it->second.root.get() == root) {
+				return it->second;
+			}
+			Hinges found;
+			found.root.reset(root);
+			if (const auto model = DoorModel::Get(a_ref)) {
+				found.wings = FindWings(root, *model);
+				if (const auto widest = std::ranges::max_element(found.wings, {}, &Wing::turn); widest != found.wings.end()) {
+					found.start = widest->start;
+				}
+			}
+			if (hinges.size() >= kMaxHinges) {
+				hinges.clear();
+			}
+			hinges[a_ref->GetFormID()] = found;
+			return found;
 		}
 
 		bool Fresh(const SwingNode& a_node)
@@ -366,10 +431,9 @@ namespace Doors
 					swing.nodes.push_back({ RE::NiPointer<RE::NiAVObject>(node), node->local.rotate, node->local.translate, {}, {}, false });
 				}
 			}
-			if (const auto model = DoorModel::Get(a_target.ref)) {
-				for (auto& n : swing.nodes) {
-					n.panel = std::ranges::any_of(model->panels, [&](const std::string& a_name) { return _stricmp(a_name.c_str(), n.node->name.c_str()) == 0; });
-				}
+			const auto hinged = HingesOf(a_target.ref);
+			for (auto& n : swing.nodes) {
+				n.panel = std::ranges::any_of(hinged.wings, [&](const Wing& a_wing) { return a_wing.node == n.node.get(); });
 			}
 			if (Settings::Get().debugLog) {
 				std::string names;
@@ -620,6 +684,18 @@ namespace Doors
 		const float vertical = extent[up] * std::abs(axes[up].z) + extent[a] * std::abs(axes[a].z) + extent[b] * std::abs(axes[b].z);
 		shape.bottom = shape.center.z - vertical;
 		shape.top = shape.center.z + vertical;
+
+		// The bounds can hold more than the door (the stockade gate's include its wall posts, far behind the wings):
+		// the door's plane goes through its hinges, else standing close in front could count as standing behind it.
+		if (const auto hinged = HingesOf(a_ref); !hinged.wings.empty()) {
+			float offset = 0.0f;
+			for (const auto& wing : hinged.wings) {
+				offset += Dot(wing.node->world.translate - shape.center, shape.normal);
+			}
+			offset /= static_cast<float>(hinged.wings.size());
+			shape.center += shape.normal * offset;
+			shape.halfThickness = std::min(shape.halfThickness, kPanelHalfThickness);
+		}
 		return shape;
 	}
 
@@ -651,7 +727,7 @@ namespace Doors
 		if (const float limit = Settings::Get().barredDelay; limit > 0.0f) {
 			// door replacers (Glorious Doors of Skyrim...): a door that turns locks and slides bars for a long while
 			// before it swings is barred, kicks and shouts don't open it
-			if (const auto model = DoorModel::Get(a_ref); model && model->panelStart > limit) {
+			if (HingesOf(a_ref).start > limit) {
 				return Verdict::kBarred;
 			}
 		}
@@ -753,11 +829,11 @@ namespace Doors
 			door->AddLockChange();
 			RE::TESLockChangedEvent event{ RE::NiPointer<RE::TESObjectREFR>(door) };
 			RE::ScriptEventSourceHolder::GetSingleton()->SendEvent(&event);
-			SetKicks(door->GetFormID(), 0);
 			Play(sounds.snap, shape.center);
 			Play(sounds.unlock, shape.center);
 			Crime(door);
 		}
+		SetKicks(door->GetFormID(), 0);
 		Play(sounds.impact, shape.center);
 		Noise(door, shape.center);
 		if (Settings::Get().debugLog) {
@@ -851,6 +927,10 @@ namespace Doors
 		wobbles.clear();
 		knocks.clear();
 		knockedAt.clear();
+		{
+			std::scoped_lock hingeGuard(hingeLock);
+			hinges.clear();
+		}
 		std::scoped_lock guard(swingLock);
 		for (auto& swing : swings) {
 			StopPacing(swing);

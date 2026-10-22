@@ -4,6 +4,7 @@
 #include "Forms.h"
 #include "Lang.h"
 #include "MathUtil.h"
+#include "Ray.h"
 #include "Settings.h"
 
 namespace Shout
@@ -35,36 +36,6 @@ namespace Shout
 		std::vector<Wave>                             waves;
 		std::unordered_map<std::uint64_t, float>      seen;  // projectile (handle and address) -> seconds since seen first
 
-		struct Ray
-		{
-			bool               hit{ false };
-			float              distance{ 0.0f };
-			RE::TESObjectREFR* ref{ nullptr };
-		};
-
-		Ray Cast(RE::PlayerCharacter* a_player, const NiPoint3& a_from, const NiPoint3& a_to)
-		{
-			Ray         ray;
-			auto* const cell = a_player->GetParentCell();
-			auto* const world = cell ? cell->GetbhkWorld() : nullptr;
-			if (!world) {
-				return ray;
-			}
-			const float     scale = RE::bhkWorld::GetWorldScale();
-			RE::bhkPickData pick{};
-			pick.rayInput.from = RE::hkVector4(a_from.x * scale, a_from.y * scale, a_from.z * scale, 0.0f);
-			pick.rayInput.to = RE::hkVector4(a_to.x * scale, a_to.y * scale, a_to.z * scale, 0.0f);
-			RE::CFilter filter{};
-			a_player->GetCollisionFilterInfo(filter);  // the player's own group: the ray passes through the player's body
-			pick.rayInput.filterInfo.filter = (filter.filter & 0xFFFF0000) | static_cast<std::uint32_t>(RE::COL_LAYER::kLOS);
-			if (world->PickObject(pick) && pick.rayOutput.HasHit()) {
-				ray.hit = true;
-				ray.distance = Length(a_to - a_from) * pick.rayOutput.hitFraction;
-				ray.ref = pick.rayOutput.rootCollidable ? RE::TESHavokUtilities::FindCollidableRef(*pick.rayOutput.rootCollidable) : nullptr;
-			}
-			return ray;
-		}
-
 		// nothing solid between the shout and the door: one of three lines to the panel gets there (actors don't block)
 		bool Reaches(RE::PlayerCharacter* a_player, const NiPoint3& a_from, RE::TESObjectREFR* a_door, const Doors::Shape& a_shape)
 		{
@@ -73,7 +44,7 @@ namespace Shout
 				const float    length = Length(to - a_from);
 				NiPoint3       from = a_from;
 				for (int tries = 0; tries < 3; ++tries) {
-					const auto ray = Cast(a_player, from, to);
+					const auto ray = ::Ray::Cast(a_player, from, to);
 					const float travelled = Length(from - a_from) + ray.distance;
 					if (!ray.hit || ray.ref == a_door || travelled >= length - 30.0f) {
 						return true;
@@ -155,7 +126,8 @@ namespace Shout
 			if (!manager) {
 				return;
 			}
-			std::vector<RE::ProjectileHandle> handles;
+			static std::vector<RE::ProjectileHandle> handles;  // kept between frames: no allocation every frame
+			handles.clear();
 			{
 				RE::BSSpinLockGuard guard(manager->projectileLock);
 				for (const auto* list : { &manager->unlimited, &manager->limited, &manager->pending }) {

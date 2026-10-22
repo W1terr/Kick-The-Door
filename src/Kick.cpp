@@ -1,10 +1,12 @@
 #include "Kick.h"
 
 #include "Clip.h"
+#include "Fight.h"
 #include "Forms.h"
 #include "Keys.h"
 #include "Lang.h"
 #include "MathUtil.h"
+#include "Ray.h"
 #include "Settings.h"
 
 namespace Kick
@@ -13,25 +15,39 @@ namespace Kick
 	{
 		using RE::NiPoint3;
 
-		constexpr float kFadeIn = 0.08f;   // the animation file blends in and out over these
-		constexpr float kFadeOut = 0.15f;
-
-		// when things happen during a kick (seconds)
+		// when things happen during a kick (seconds) and how the player moves; without an animation: these
 		struct Timing
 		{
-			float swing{ 0.20f };   // the whoosh
-			float impact{ 0.34f };  // the foot meets the door
-			float end{ 0.80f };     // standing again
-			float turnEnd() const { return impact * 0.65f; }      // facing the door by now
-			float stepStart() const { return impact * 0.12f; }
-			float stepEnd() const { return impact * 0.70f; }
+			float swing{ 0.20f };      // the whoosh
+			float impact{ 0.34f };     // the foot meets the door
+			float last{ 0.80f };       // the animation's last frame
+			float stepStart{ 0.04f };  // moved towards the door from here
+			float stepEnd{ 0.24f };    // to here
+			float turnEnd{ 0.22f };    // facing the door by now
+			float standOff{ 55.0f };   // the step stops this far from the panel
+			float blendIn{ 0.08f };
+			float blendOut{ 0.15f };   // after the last frame
+			float endStep{ 0.0f };     // moved forward while blending out
+			float maxStep{ 50.0f };    // the step towards the target goes this far at most
+			float lunge{ 0.0f };       // with nothing to aim at: moved this far forward
+			float end() const { return last + blendOut; }  // standing again
 		};
-		constexpr float kStandOff = 55.0f;  // the step in stops this far from the panel
-		constexpr float kMaxStep = 50.0f;
+		constexpr float kMaxBack = 25.0f;   // back, when standing closer than the kick needs
+		constexpr float kReachSlack = 10.0f;  // the foot reaches a body this much past where a door would be
+
+		// what the kick goes for
+		enum class Mode
+		{
+			kDoor,  // a door under the crosshair (forced, or only the thud if it can't be)
+			kFree   // straight ahead, wherever the player faces: whoever the foot reaches at the impact gets it
+		};
 
 		struct State
 		{
 			bool               active{ false };
+			Mode               mode{ Mode::kFree };
+			Doors::Verdict     doorVerdict{ Doors::Verdict::kOk };
+			bool               sprinting{ false };
 			int                animation{ -1 };  // the kick animation playing (none: the kick happens without one)
 			bool               keepArms{ true }; // with a weapon drawn the arms keep the weapon stance
 			Timing             timing;
@@ -45,8 +61,9 @@ namespace Kick
 			float              startHeading{ 0.0f };
 			float              heading{ 0.0f };
 			NiPoint3           face;                  // horizontal direction into the door
-			float              step{ 0.0f };          // how far the player steps in
+			float              step{ 0.0f };          // how far the player steps in (negative: back)
 			float              stepped{ 0.0f };
+			float              endStepped{ 0.0f };
 			std::vector<RE::PlayerInputHandler*> blocked;
 		} state;
 
@@ -140,51 +157,129 @@ namespace Kick
 			}
 		}
 
+		bool IsDoor(const RE::TESObjectREFR* a_ref)
+		{
+			const auto* base = a_ref ? a_ref->GetBaseObject() : nullptr;
+			return base && base->Is(RE::FormType::Door);
+		}
+
+		// the door the kick is for: the one under the crosshair, else one straight ahead of the player within reach
+		// (the camera can look past a door the player stands right in front of, in 3rd person especially)
+		RE::TESObjectREFR* DoorInFront(RE::PlayerCharacter* a_player, float a_reach)
+		{
+			if (auto* const ref = CrosshairRef(); IsDoor(ref)) {
+				return ref;
+			}
+			const float    heading = a_player->GetAngleZ();
+			const NiPoint3 face{ std::sin(heading), std::cos(heading), 0.0f };
+			const NiPoint3 eye = a_player->GetPosition() + NiPoint3{ 0.0f, 0.0f, 70.0f };
+			const auto     ray = ::Ray::Cast(a_player, eye, eye + face * (a_reach + 20.0f));
+			return ray.hit && IsDoor(ray.ref) ? ray.ref : nullptr;
+		}
+
+		// a step forward stops short of a wall or anyone else in the way
+		float Clear(RE::PlayerCharacter* a_player, const NiPoint3& a_face, float a_step)
+		{
+			constexpr float kBody = 30.0f;
+			if (a_step <= 0.0f) {
+				return a_step;
+			}
+			const auto at = a_player->GetPosition();
+			for (const float height : { 35.0f, 85.0f }) {
+				const NiPoint3 from = at + NiPoint3{ 0.0f, 0.0f, height };
+				if (const auto ray = ::Ray::Cast(a_player, from, from + a_face * (a_step + kBody)); ray.hit) {
+					a_step = std::min(a_step, std::max(ray.distance - kBody, 0.0f));
+				}
+			}
+			return a_step;
+		}
+
+		Clip::Situation SituationOf(RE::PlayerCharacter* a_player, bool a_lockedDoor, bool a_sprinting)
+		{
+			Clip::Situation situation;
+			situation.female = a_player->GetActorBase() && a_player->GetActorBase()->GetSex() == RE::SEX::kFemale;
+			situation.weaponDrawn = a_player->AsActorState()->IsWeaponDrawn();
+			situation.sneaking = a_player->IsSneaking();
+			situation.lockedDoor = a_lockedDoor;
+			situation.sprinting = a_sprinting;
+			situation.race = a_player->GetRace() ? a_player->GetRace()->GetFormID() : 0;
+			return situation;
+		}
+
 		void Start(RE::PlayerCharacter* a_player)
 		{
 			const auto& s = Settings::Get();
-			auto* const ref = CrosshairRef();
-			if (!ref) {
-				return;
-			}
-			Doors::Target target;
-			const auto    verdict = Doors::Check(ref, target);
-			if (verdict == Doors::Verdict::kNotLocked || verdict == Doors::Verdict::kNotLoaded || verdict == Doors::Verdict::kOpen) {
-				return;  // nothing to kick (an unlocked door still opens with Activate as always)
-			}
-			if (verdict == Doors::Verdict::kNotADoor && !ref->GetBaseObject()->Is(RE::FormType::Door)) {
-				return;  // not a door at all: the key may belong to something else
-			}
-			if (verdict != Doors::Verdict::kOk) {
-				Doors::Notify(Doors::Describe(verdict, target.level));
-				return;
-			}
+			auto* const ref = DoorInFront(a_player, s.kickReach);
 			const auto  position = a_player->GetPosition();
-			const float distance = Doors::Distance(target.shape, position);
-			if (distance > s.kickReach) {
-				Doors::Notify(Lang::T("Too far away to kick it."));
+			const bool  sprinting = a_player->AsActorState()->IsSprinting();
+
+			// a door in front, close enough: kicked as a door (forced, or only the thud if it can't be)
+			Doors::Target door;
+			auto          verdict = Doors::Verdict::kNotADoor;
+			float         doorDistance = 0.0f;
+			if (ref && s.kicking) {
+				verdict = Doors::Check(ref, door);
+				if (verdict == Doors::Verdict::kNotLocked || verdict == Doors::Verdict::kNotLoaded || verdict == Doors::Verdict::kOpen) {
+					verdict = Doors::Verdict::kNotADoor;  // nothing to force: kicked like anything else
+				} else if (verdict != Doors::Verdict::kNotADoor) {
+					doorDistance = Doors::Distance(door.shape, position);
+					if (doorDistance > s.kickReach) {
+						if (!s.fighting) {
+							Doors::Notify(Lang::T("Too far away to kick it."));
+							return;
+						}
+						verdict = Doors::Verdict::kNotADoor;
+					}
+				}
+			}
+			const bool atDoor = verdict != Doors::Verdict::kNotADoor;
+			if (!atDoor && !s.fighting) {
+				return;
+			}
+			if (!atDoor && Stamina(a_player) < s.kickCost) {
+				RE::HUDMenu::FlashMeter(RE::ActorValue::kStamina);
+				Doors::Notify(Lang::F("Not enough stamina to kick ({:.0f} needed).", s.kickCost));
 				return;
 			}
 
 			state = {};
 			state.active = true;
-			state.door = ref->GetHandle();
-			state.enoughStamina = Stamina(a_player) >= Settings::LockFor(target.level).staminaNeeded;
-			state.face = Doors::NormalTowards(target.shape, position) * -1.0f;
-			state.startHeading = a_player->GetAngleZ();
-			state.heading = std::atan2(state.face.x, state.face.y);
-			state.step = std::clamp(distance - kStandOff, 0.0f, kMaxStep);
-			Clip::Situation situation;
-			situation.female = a_player->GetActorBase() && a_player->GetActorBase()->GetSex() == RE::SEX::kFemale;
-			situation.weaponDrawn = a_player->AsActorState()->IsWeaponDrawn();
-			situation.sneaking = a_player->IsSneaking();
-			situation.lockedDoor = target.level != Settings::kUnlocked;
-			situation.race = a_player->GetRace() ? a_player->GetRace()->GetFormID() : 0;
-			if (const auto clip = Clip::Pick(situation, s.animation)) {
+			state.sprinting = sprinting;
+			if (const auto clip = Clip::Pick(SituationOf(a_player, atDoor && door.level != Settings::kUnlocked, sprinting), s.animation)) {
 				state.animation = clip->animation;
 				state.keepArms = clip->keepArms;
-				state.timing = { std::clamp(clip->swing, 0.0f, clip->duration), std::clamp(clip->impact, 0.05f, clip->duration), clip->duration };
+				auto& t = state.timing;
+				t.last = clip->duration;
+				t.impact = std::clamp(clip->impact, 0.05f, t.last);
+				t.swing = std::clamp(clip->swing, 0.0f, t.last);
+				t.stepStart = std::clamp(clip->stepStart, 0.0f, t.impact);
+				t.stepEnd = std::clamp(clip->stepEnd, t.stepStart + 0.01f, std::max(t.impact, t.stepStart + 0.01f));
+				t.turnEnd = std::clamp(clip->turnEnd, 0.05f, t.impact);
+				t.standOff = clip->standOff;
+				t.blendIn = clip->blendIn;
+				t.blendOut = clip->blendOut;
+				t.endStep = clip->endStep;
+				t.maxStep = clip->maxStep;
+				t.lunge = clip->lunge;
 			}
+			const auto& t = state.timing;
+			state.startHeading = a_player->GetAngleZ();
+			if (atDoor) {
+				state.mode = Mode::kDoor;
+				state.door = ref->GetHandle();
+				state.doorVerdict = verdict;
+				state.enoughStamina = verdict == Doors::Verdict::kOk && Stamina(a_player) >= Settings::LockFor(door.level).staminaNeeded;
+				state.face = Doors::NormalTowards(door.shape, position) * -1.0f;
+				state.step = std::clamp(doorDistance - t.standOff, -kMaxBack, t.maxStep);
+			} else {
+				// no turning to anyone and no pulling towards them: the kick goes where the player faces (a sprint
+				// carries them on a little, stopping short of whatever is in the way)
+				a_player->AsActorValueOwner()->DamageActorValue(RE::ActorValue::kStamina, s.kickCost);
+				state.mode = Mode::kFree;
+				state.face = NiPoint3{ std::sin(state.startHeading), std::cos(state.startHeading), 0.0f };
+				state.step = Clear(a_player, state.face, sprinting ? t.lunge : 0.0f);
+			}
+			state.heading = state.mode == Mode::kDoor ? std::atan2(state.face.x, state.face.y) : state.startHeading;
 			BlockControls(true);
 			if (s.firstPerson == 1 && !ImprovedCamera()) {
 				auto* const camera = RE::PlayerCamera::GetSingleton();
@@ -194,13 +289,17 @@ namespace Kick
 				}
 			}
 			if (s.debugLog) {
-				logs::info("Kick at {} [{:08X}] ({} lock, {} kick(s) so far), {:.0f} units away, stamina {:.0f} / {:.0f}", Forms::Name(ref),
-					ref->GetFormID(), Doors::LevelName(target.level), Doors::Kicks(ref->GetFormID()), distance, Stamina(a_player),
-					Settings::LockFor(target.level).staminaNeeded);
+				if (atDoor) {
+					logs::info("Kick at {} [{:08X}] ({} lock, {} kick(s) so far), {:.0f} units away, stamina {:.0f} / {:.0f}{}", Forms::Name(ref),
+						ref->GetFormID(), Doors::LevelName(door.level), Doors::Kicks(ref->GetFormID()), doorDistance, Stamina(a_player),
+						Settings::LockFor(door.level).staminaNeeded, verdict == Doors::Verdict::kOk ? "" : " - it won't give");
+				} else {
+					logs::info("Kick{}, step {:.0f}", sprinting ? " while sprinting" : "", state.step);
+				}
 			}
 		}
 
-		void Resolve(RE::PlayerCharacter* a_player)
+		void ResolveDoor(RE::PlayerCharacter* a_player)
 		{
 			const auto& s = Settings::Get();
 			const auto  ref = state.door.get();
@@ -209,10 +308,16 @@ namespace Kick
 			}
 			Doors::Target target;
 			const auto    verdict = Doors::Check(ref.get(), target);
+			const auto    from = a_player->GetPosition();
 			if (verdict != Doors::Verdict::kOk) {
+				if (verdict == state.doorVerdict) {
+					// a door that won't give (needs a key, barred, held by a quest...): only the thud
+					Doors::Hit(target, from, false);
+					RE::ShakeCamera(0.15f, target.shape.center, 0.2f);
+					Doors::Notify(Doors::Describe(verdict, target.level));
+				}
 				return;  // unlocked or changed meanwhile: the foot meets a door that gives anyway
 			}
-			const auto  from = a_player->GetPosition();
 			const auto& lock = Settings::LockFor(target.level);
 			if (!state.enoughStamina) {
 				Doors::Hit(target, from, false);
@@ -233,12 +338,32 @@ namespace Kick
 				Doors::SetKicks(ref->GetFormID(), done);
 				Doors::Hit(target, from, true);
 				RE::ShakeCamera(0.25f, target.shape.center, 0.25f);
-				Doors::Notify(Lang::F("The door shudders. One more kick should break the {} lock.", Lang::T(Doors::LevelName(target.level))));
+				const int left = needed - done;
+				if (target.level == Settings::kUnlocked) {
+					Doors::Notify(left == 1 ? std::string(Lang::T("The door shudders. One more kick should break it open.")) :
+					                          Lang::F("The door shudders. {} more kicks should break it open.", left));
+				} else {
+					const auto* level = Lang::T(Doors::LevelName(target.level));
+					Doors::Notify(left == 1 ? Lang::F("The door shudders. One more kick should break the {} lock.", level) :
+					                          Lang::F("The door shudders. {} more kicks should break the {} lock.", left, level));
+				}
 				return;
 			}
 			state.enterAfter = target.teleport && s.enterLoadDoors;
 			Doors::Break(target, from, Doors::Cause::kKick, false);
 			RE::ShakeCamera(0.4f, target.shape.center, 0.3f);
+		}
+
+		void Resolve(RE::PlayerCharacter* a_player)
+		{
+			if (state.mode == Mode::kDoor) {
+				ResolveDoor(a_player);
+				return;
+			}
+			const float reach = state.timing.standOff + kReachSlack;  // as far as the toe gets
+			if (auto* const actor = Fight::Reached(a_player, reach)) {
+				Fight::Hit(a_player, actor, state.sprinting);
+			}
 		}
 
 		void Step(RE::PlayerCharacter* a_player, float a_delta)
@@ -251,17 +376,25 @@ namespace Kick
 				return;
 			}
 
-			// turn to the door and step in while the leg comes up
-			if (before < timing.turnEnd()) {
-				const float t = M::Smooth(std::min(state.time / timing.turnEnd(), 1.0f));
+			// turn to the door and step in (or back) before the kick
+			if (before < timing.turnEnd) {
+				const float t = M::Smooth(std::min(state.time / timing.turnEnd, 1.0f));
 				a_player->SetHeading(M::LerpAngle(state.startHeading, state.heading, t));
 			}
-			if (state.step > 0.0f && before < timing.stepEnd()) {
-				const float t = M::Smooth((std::min(state.time, timing.stepEnd()) - timing.stepStart()) / (timing.stepEnd() - timing.stepStart()));
+			if (state.step != 0.0f && before < timing.stepEnd) {
+				const float t = M::Smooth((std::min(state.time, timing.stepEnd) - timing.stepStart) / (timing.stepEnd - timing.stepStart));
 				const float target = state.step * t;
-				if (target > state.stepped + 0.01f) {
+				if (std::abs(target - state.stepped) > 0.01f) {
 					a_player->SetPosition(a_player->GetPosition() + state.face * (target - state.stepped), true);
 					state.stepped = target;
+				}
+			}
+			// the animation's stance comes back under the player while it blends out (its forward step stays put)
+			if (timing.endStep != 0.0f && state.time > timing.last && timing.blendOut > 0.0f) {
+				const float target = timing.endStep * M::Smooth((state.time - timing.last) / timing.blendOut);
+				if (std::abs(target - state.endStepped) > 0.01f) {
+					a_player->SetPosition(a_player->GetPosition() + state.face * (target - state.endStepped), true);
+					state.endStepped = target;
 				}
 			}
 			if (auto* const controls = RE::PlayerControls::GetSingleton()) {
@@ -276,7 +409,7 @@ namespace Kick
 				state.resolved = true;
 				Resolve(a_player);
 			}
-			if (state.time >= timing.end) {
+			if (state.time >= timing.end()) {
 				Finish();
 			}
 		}
@@ -306,7 +439,8 @@ namespace Kick
 		if (!player) {
 			return;
 		}
-		if (std::exchange(requested, false) && !state.active && Settings::Get().kicking && GameReady() && CanKick(player)) {
+		const auto& s = Settings::Get();
+		if (std::exchange(requested, false) && !state.active && (s.kicking || s.fighting) && GameReady() && CanKick(player)) {
 			Start(player);
 		}
 		if (state.active) {
@@ -318,12 +452,13 @@ namespace Kick
 	{
 		if (state.active && state.animation >= 0) {
 			auto* const player = RE::PlayerCharacter::GetSingleton();
-			const float weight = std::min(M::Smooth(state.time / kFadeIn), M::Smooth((state.timing.end - state.time) / kFadeOut));
+			const auto& t = state.timing;
+			const float in = t.blendIn > 0.0f ? M::Smooth(state.time / t.blendIn) : 1.0f;
+			const float out = t.blendOut > 0.0f ? M::Smooth((t.end() - state.time) / t.blendOut) : (state.time < t.last ? 1.0f : 0.0f);
+			const float weight = std::min(in, out);
 			Clip::Apply(player, state.animation, state.time, weight, state.keepArms && player->AsActorState()->IsWeaponDrawn());
 		}
 	}
-
-	bool Active() { return state.active; }
 
 	void Reset()
 	{

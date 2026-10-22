@@ -72,36 +72,6 @@ namespace Menu
 
 		const char* Level(int a_level) { return T(Doors::LevelName(a_level)); }
 
-		bool SameName(std::string_view a, std::string_view b)
-		{
-			return std::ranges::equal(a, b, [](char x, char y) { return std::tolower(static_cast<unsigned char>(x)) == std::tolower(static_cast<unsigned char>(y)); });
-		}
-
-		void AnimationCombo(std::string& a_pack)
-		{
-			const auto& packs = Clip::Packs();
-			std::string preview = T("Automatic");
-			for (const auto& pack : packs) {
-				if (SameName(pack.folder, a_pack)) {
-					preview = pack.name;
-				}
-			}
-			if (BeginCombo(Id("Kick animation").c_str(), preview.c_str())) {
-				if (Selectable(Id("Automatic").c_str(), a_pack == "auto")) {
-					a_pack = "auto";
-				}
-				for (const auto& pack : packs) {
-					if (pack.animations == 0) {
-						continue;
-					}
-					if (Selectable(std::format("{}###pack{}", pack.name, pack.folder).c_str(), SameName(pack.folder, a_pack))) {
-						a_pack = pack.folder;
-					}
-				}
-				EndCombo();
-			}
-		}
-
 		void PackList()
 		{
 			const auto& packs = Clip::Packs();
@@ -140,7 +110,7 @@ namespace Menu
 
 			Heading("General");
 			Checkbox(Id("Kick doors open").c_str(), &s.kicking);
-			Hint("Look at a door and hold the kick key. Lockpicking still works as always.");
+			Hint("Look at a door and press the kick key. Lockpicking still works as always.");
 			Checkbox(Id("Unrelenting Force breaks doors").c_str(), &s.shouting);
 			Hint("The first door the shout's wave reaches gets the hit. How many words each lock needs is set below.");
 			Checkbox(Id("Knock down whoever stands behind the door").c_str(), &s.knockdown);
@@ -166,11 +136,22 @@ namespace Menu
 			Hint("Without a visible body in first person you won't see the kick. With Improved Camera the view stays in first person.");
 			Checkbox(Id("Go through a kicked load door").c_str(), &s.enterLoadDoors);
 			Hint("A load door whose lock you kick in takes you through once the kick is over. Off: it only stays unlocked.");
-			AnimationCombo(s.animation);
-			Hint("Animation packs are folders in Meshes\\KickTheDoor\\Animations. Automatic: the pack with the highest priority whose conditions fit the kick plays (with several animations in a pack, one at random). The Status page lists the packs found.");
+
+			Heading("Kicking people");
+			Checkbox(Id("Kick people and creatures").c_str(), &s.fighting);
+			Hint("Press the kick key anywhere but at a door: the kick goes for whoever is in front of you and staggers them, like the first word of Unrelenting Force. They take it as an attack.");
+			SliderFloat(Id("Stamina cost", "fight").c_str(), &s.kickCost, 0.0f, 150.0f, "%.0f");
+			Hint("What such a kick takes. With less stamina you can't kick.");
+			SliderFloat(Id("Stagger strength").c_str(), &s.kickStagger, 0.25f, 1.5f, "%.2f");
+			Hint("The first word of Unrelenting Force staggers with 0.75.");
+			Checkbox(Id("Sprint kicks knock people down").c_str(), &s.sprintKnockdown);
+			Hint("Kicked while you sprint, people in light armor or none fall over. Heavy armor, big creatures and those who can't fall are only staggered.");
+			BeginDisabled(!s.sprintKnockdown);
+			SliderFloat(Id("Knockdown force", "fight").c_str(), &s.sprintKnockdownForce, 0.0f, 12.0f, "%.1f");
+			EndDisabled();
 
 			Heading("Locks");
-			TextWrapped("%s", T("Expert and Master locks always take two kicks. A kick needs at least the stamina shown and takes the cost when it lands; with less, the door only rattles."));
+			TextWrapped("%s", T("A kick needs at least the stamina shown and takes the cost when it lands; with less, the door only rattles. A door gives after the kicks shown (a weakened door stays weakened)."));
 			if (BeginTable("locks", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 				TableSetupColumn(T("Lock"));
 				TableSetupColumn(T("Can be forced"));
@@ -194,7 +175,8 @@ namespace Menu
 					SetNextItemWidth(-1.0f);
 					SliderFloat(std::format("##cost{}", i).c_str(), &l.staminaCost, 0.0f, 200.0f, "%.0f");
 					TableNextColumn();
-					Text("%d", Settings::kKicksNeeded[i]);
+					SetNextItemWidth(-1.0f);
+					SliderInt(std::format("##kicks{}", i).c_str(), &l.kicks, 1, Settings::kMaxKicks);
 					TableNextColumn();
 					SetNextItemWidth(-1.0f);
 					const char* words[] = { "Fus", "Fus Ro", "Fus Ro Dah" };
@@ -222,7 +204,8 @@ namespace Menu
 				SetNextItemWidth(-1.0f);
 				SliderFloat("##costU", &u.staminaCost, 0.0f, 200.0f, "%.0f");
 				TableNextColumn();
-				Text("%d", 1);
+				SetNextItemWidth(-1.0f);
+				SliderInt("##kicksU", &u.kicks, 1, Settings::kMaxKicks);
 				TableNextColumn();
 				Checkbox(Id("Any", "shoutU").c_str(), &s.shoutUnlocked);
 				if (IsItemHovered()) {
@@ -231,15 +214,17 @@ namespace Menu
 				EndDisabled();
 				EndTable();
 			}
-			if (Button(Id("Default stamina and words").c_str())) {
+			if (Button(Id("Defaults", "locks").c_str())) {
 				const Settings::Values defaults;
 				for (std::size_t i = 0; i < Settings::kLevels; ++i) {
 					s.locks[i].staminaNeeded = defaults.locks[i].staminaNeeded;
 					s.locks[i].staminaCost = defaults.locks[i].staminaCost;
 					s.locks[i].shoutWords = defaults.locks[i].shoutWords;
+					s.locks[i].kicks = defaults.locks[i].kicks;
 				}
 				s.unlocked.staminaNeeded = defaults.unlocked.staminaNeeded;
 				s.unlocked.staminaCost = defaults.unlocked.staminaCost;
+				s.unlocked.kicks = defaults.unlocked.kicks;
 			}
 
 			Heading("Unrelenting Force");

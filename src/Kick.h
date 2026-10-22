@@ -2,8 +2,10 @@
 
 #include "Doors.h"
 
-// Holding the kick key at a locked door: the player turns to it, steps in and kicks. The kick lands 0.34 s in: stamina
-// is checked and taken, Expert and Master locks need a second kick, the lock breaks and the door flies open.
+// Pressing the kick key. At a door: the player turns to it, steps in and kicks; at the impact stamina is checked and
+// taken, Expert and Master locks need a second kick, the lock breaks and the door flies open. Anywhere else (Fight): the
+// kick costs stamina up front and goes for whoever is in front, who is staggered (knocked down after a sprint).
+// The animation (Clip) sets the timing.
 namespace Kick
 {
 	// the kick key went down / is held / came up (input thread = main thread)
@@ -12,7 +14,6 @@ namespace Kick
 	void Update(float a_delta);  // every frame on the main thread while the game runs
 	void ApplyPose();            // right after the player's skeleton was updated
 
-	bool Active();
 	void Reset();  // a game is loading: stop any kick right away
 
 	// what a kick at this door would do now, for the status page

@@ -3,7 +3,11 @@
   SNDR  KTD_DoorImpactSD   a kick or a shout wave slamming into a door (res/Sound/FX/KickTheDoor/door_impact_0N.wav,
                           made by tools/make_sounds.py), positional, set up like the vanilla battering ram impact
 
-The DLL finds it by local form id (src/Doors.cpp: 0x800 in KickTheDoor.esp).
+  SPEL  KTD_KickSpell      the kick landing on someone (src/Fight.cpp): the vanilla StaggerAttackFFContact effect (hostile,
+                          Stagger archetype) at 0.75 like the first word of Unrelenting Force (the DLL passes the menu's
+                          stagger strength); cast by the player, so the target and onlookers take it as an attack
+
+The DLL finds them by local form id (0x800, 0x801 in KickTheDoor.esp).
 usage: python build_esp.py [output.esp]
 """
 import struct
@@ -21,6 +25,10 @@ OUTPUT_MONO_2000_VERB = 0xE324B   # SOMMono02000_verb: positional with reverb, h
 DESCRIPTOR_STANDARD = 0x1EEF540A  # BGSStandardSoundDef
 
 DOOR_IMPACT = 0x800
+KICK_SPELL = 0x801
+
+STAGGER_CONTACT = 0x07809B  # StaggerAttackFFContact (Skyrim.esm)
+EITHER_HAND = 0x013F44      # EitherHand equip slot
 
 
 def sub(typ, data):
@@ -56,23 +64,38 @@ def sndr(local, edid, files, output, priority=128, freq_variance=10, db_variance
     return record("SNDR", OWN | local, subs)
 
 
+def spel_kick():
+    return record("SPEL", OWN | KICK_SPELL, [
+        sub("EDID", "KTD_KickSpell"),
+        sub("OBND", b"\0" * 12),
+        sub("FULL", "Kick"),
+        sub("ETYP", u32(EITHER_HAND)),
+        sub("DESC", ""),
+        # cost, flags (manual cost), type (spell), charge time, casting (fire and forget), delivery (contact), cast
+        # duration, range, half cost perk - as the vanilla gargoyle stagger hits
+        sub("SPIT", struct.pack("<IIIfIIffI", 0, 0x1, 0, 0.0, 1, 1, 0.0, 0.0, 0)),
+        sub("EFID", u32(STAGGER_CONTACT)),
+        sub("EFIT", struct.pack("<fII", 0.75, 0, 0)),
+    ])
+
+
 def main():
     waves = sorted(SOUNDS.glob("door_impact_*.wav"))
     if not waves:
         sys.exit("no sounds: run make_sounds.py first")
     sounds = [sndr(DOOR_IMPACT, "KTD_DoorImpactSD", ["Data\\Sound\\FX\\KickTheDoor\\" + w.name for w in waves], OUTPUT_MONO_2000_VERB)]
-    groups = [("SNDR", sounds)]
+    groups = [("SNDR", sounds), ("SPEL", [spel_kick()])]
     body = b"".join(group(label, recs) for label, recs in groups)
     count = sum(len(recs) + 1 for _, recs in groups)
     header = record("TES4", 0, [
-        sub("HEDR", struct.pack("<f", 1.71) + struct.pack("<i", count) + u32(DOOR_IMPACT + 1)),
+        sub("HEDR", struct.pack("<f", 1.71) + struct.pack("<i", count) + u32(KICK_SPELL + 1)),
         sub("CNAM", "W1ter"),
         sub("SNAM", "Kick the Door"),
         sub("MAST", "Skyrim.esm"), sub("DATA", b"\0" * 8),
     ], flags=0x200)  # ESL
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(header + body)
-    print(f"wrote {OUT} (1 sound descriptor with {len(waves)} files)")
+    print(f"wrote {OUT} (1 sound descriptor with {len(waves)} files, 1 spell)")
 
 
 if __name__ == "__main__":

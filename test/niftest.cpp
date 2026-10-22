@@ -1,5 +1,5 @@
-// Runs DoorModel::Parse on .nif files: which parts swing on a vertical hinge and when the first one starts. Not part
-// of the mod.
+// Runs DoorModel::Parse on .nif files: which parts turn, about which axis (parent space) and from when. Not part of
+// the mod.
 #include "../src/DoorModel.h"
 
 #include <cstdio>
@@ -16,11 +16,10 @@ int main(int argc, char** argv)
 				std::printf("%-36s no Open sequence\n", name.c_str());
 				continue;
 			}
-			std::string wings;
-			for (const auto& p : info->panels) {
-				wings += "'" + p + "' ";
+			std::printf("%-36s Open %.2f s\n", name.c_str(), info->length);
+			for (const auto& p : info->parts) {
+				std::printf("    '%s' %.0f deg about (%.2f %.2f %.2f) from %.2f s\n", p.name.c_str(), p.turn, p.axis.x, p.axis.y, p.axis.z, p.start);
 			}
-			std::printf("%-36s Open %.2f s, wings %s- first starts at %.2f s\n", name.c_str(), info->length, wings.c_str(), info->panelStart);
 		} catch (const std::exception& e) {
 			std::printf("%-36s error: %s\n", name.c_str(), e.what());
 		}

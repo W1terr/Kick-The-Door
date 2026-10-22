@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.3
+
+- Kick anything: the kick key now kicks on a press (Hold for 0 by default), and away from doors the kick goes straight
+  where you face, no turning to anyone or pulling you towards them; whoever the foot reaches in front gets it. It costs
+  40 stamina ("Stamina cost") and staggers them like the first word of Unrelenting Force ("Stagger strength"); they
+  take it as an attack (a hostile spell the player casts, KickTheDoor.esp KTD_KickSpell), so combat and assault work
+  as with any hit.
+- Sprint kicks: kicked while you sprint, people in light armor or none fall over ("Sprint kicks knock people down",
+  "Knockdown force"); heavy armor, big creatures and those who can't fall are only staggered. Own animation: from the
+  running stride straight into the kick with a hop, the run carrying you on (pack Sprint).
+- The standing kick is faster: 0.87 s, the foot meets the target at 0.53 s.
+- The "Kick animation" choice is gone from the menu (sAnimation in the ini still picks a pack for every kick).
+- Doors that can't be forced (key, barred, quest) take the kick with a thud now, instead of no kick.
+- Kicks per lock level can be changed (Locks table / i<Level>Kicks, 1 - 5), unlocked doors too.
+- Who a kick meets: the nearest body in front (measured to the near side of their body, big creatures are wider and
+  taller), in the kick's height band (not someone on a ledge above or down the stairs) and with nothing solid between.
+- A door straight ahead is found even when the camera looks past it (3rd person). Door wings are looked up once per
+  loaded door instead of on every check.
+- Animation packs: condition "sprinting", the more specific pack wins among equal priorities, config maxStep / lunge.
+
+## 1.2
+
+- New kick, heavier (1.07 s, impact at 0.67 s): a light step forward, the knee comes up heavy and a little slow, a hard snap
+  into the door with the hips behind it, the foot holds on the door as the hit jolts back, then the leg comes a little
+  down and the body settles.
+- Fixed: at the stockade gate (and other doors whose bounds hold more than the door) the character sometimes turned
+  their back to it and it swung open the wrong way. The door's plane now goes through its hinges.
+- Fixed: the wings of doors whose model lies on its side in the file (Solitude jail door) weren't recognized (the
+  knob was taken for the wing), so they didn't swing away from the hit. Wings are found where the door stands.
+- Animation packs: StepStart / StepEnd markers (when the player is moved to the door, also backwards when too
+  close), config.json standOff, blendIn, blendOut (now after the last frame) and endStep.
+
 ## 1.1
 
 - Kick animation packs: every folder in Meshes\KickTheDoor\Animations is a pack with one or more .hkx files (one picked

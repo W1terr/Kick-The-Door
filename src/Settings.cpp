@@ -140,11 +140,17 @@ namespace Settings
 					Int("Kick", "iFirstPerson", v.firstPerson, 0, 1),
 					Bool("Kick", "bEnterLoadDoors", v.enterLoadDoors),
 					Text("Kick", "sAnimation", v.animation),
+					Bool("Fight", "bKickPeople", v.fighting),
+					Float("Fight", "fStaminaCost", v.kickCost, 0.0f, 500.0f),
+					Float("Fight", "fStagger", v.kickStagger, 0.1f, 2.0f),
+					Bool("Fight", "bSprintKnockdown", v.sprintKnockdown),
+					Float("Fight", "fSprintKnockdownForce", v.sprintKnockdownForce, 0.0f, 20.0f),
 					Float("UnrelentingForce", "fMaxDistance", v.shoutDistance, 200.0f, 5000.0f),
 					Bool("UnrelentingForce", "bUnlockedDoors", v.shoutUnlocked),
 					Bool("Locks", "bUnlocked", v.unlocked.enabled),
 					Float("Locks", "fUnlockedStamina", v.unlocked.staminaNeeded, 0.0f, 1000.0f),
 					Float("Locks", "fUnlockedStaminaCost", v.unlocked.staminaCost, 0.0f, 1000.0f),
+					Int("Locks", "iUnlockedKicks", v.unlocked.kicks, 1, kMaxKicks),
 					Bool("Doors", "bQuestDoors", v.questDoors),
 					Bool("Doors", "bCrime", v.crime),
 					Bool("Doors", "bNoise", v.noise),
@@ -155,16 +161,17 @@ namespace Settings
 					Bool("Feedback", "bDebugLog", v.debugLog),
 					Text("General", "sLanguage", v.language),
 				};
-				// [Locks] bNovice, fNoviceStamina, fNoviceStaminaCost, iNoviceShoutWords, ...
-				static std::array<std::array<std::string, 4>, kLevels> keys;
+				// [Locks] bNovice, fNoviceStamina, fNoviceStaminaCost, iNoviceShoutWords, iNoviceKicks, ...
+				static std::array<std::array<std::string, 5>, kLevels> keys;
 				for (std::size_t i = 0; i < kLevels; ++i) {
 					const std::string name = kLevelNames[i];
-					keys[i] = { "b" + name, "f" + name + "Stamina", "f" + name + "StaminaCost", "i" + name + "ShoutWords" };
+					keys[i] = { "b" + name, "f" + name + "Stamina", "f" + name + "StaminaCost", "i" + name + "ShoutWords", "i" + name + "Kicks" };
 					auto& l = v.locks[i];
 					f.push_back(Bool("Locks", keys[i][0].c_str(), l.enabled));
 					f.push_back(Float("Locks", keys[i][1].c_str(), l.staminaNeeded, 0.0f, 1000.0f));
 					f.push_back(Float("Locks", keys[i][2].c_str(), l.staminaCost, 0.0f, 1000.0f));
 					f.push_back(Int("Locks", keys[i][3].c_str(), l.shoutWords, 1, 3));
+					f.push_back(Int("Locks", keys[i][4].c_str(), l.kicks, 1, kMaxKicks));
 				}
 				return f;
 			}();
@@ -221,7 +228,7 @@ namespace Settings
 		for (std::size_t i = 0; i < kLevels; ++i) {
 			const auto& l = values.locks[i];
 			logs::info("  {}: {}, stamina {} (cost {}), {} kick(s), {} word(s)", kLevelNames[i], l.enabled ? "on" : "off", l.staminaNeeded,
-				l.staminaCost, kKicksNeeded[i], l.shoutWords);
+				l.staminaCost, l.kicks, l.shoutWords);
 		}
 	}
 

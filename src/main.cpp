@@ -1,5 +1,6 @@
 #include "Clip.h"
 #include "Doors.h"
+#include "Fight.h"
 #include "Hooks.h"
 #include "Kick.h"
 #include "Lang.h"
@@ -37,6 +38,7 @@ namespace
 		switch (a_msg->type) {
 		case SKSE::MessagingInterface::kDataLoaded:
 			Doors::Init();
+			Fight::Init();
 			Shout::Init();
 			Clip::Load();
 			Lang::Set(Settings::Get().language);

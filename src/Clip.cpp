@@ -142,6 +142,9 @@ namespace Clip
 			float       impact{ 0.0f };
 			bool        swingMarked{ false };
 			bool        impactMarked{ false };
+			float       stepStart{ 0.0f };
+			float       stepEnd{ 0.0f };
+			bool        stepMarked{ false };  // both StepStart and StepEnd
 		};
 
 		struct Animation
@@ -158,6 +161,7 @@ namespace Clip
 			std::optional<bool>            weaponDrawn;
 			std::optional<bool>            sneaking;
 			std::optional<bool>            lockedDoor;
+			std::optional<bool>            sprinting;
 			std::unordered_set<RE::FormID> races;  // empty = any
 			bool                           racesListed{ false };
 
@@ -165,7 +169,14 @@ namespace Clip
 			{
 				return (!female || *female == a_s.female) && (!weaponDrawn || *weaponDrawn == a_s.weaponDrawn) &&
 				       (!sneaking || *sneaking == a_s.sneaking) && (!lockedDoor || *lockedDoor == a_s.lockedDoor) &&
-				       (!racesListed || races.contains(a_s.race));
+				       (!sprinting || *sprinting == a_s.sprinting) && (!racesListed || races.contains(a_s.race));
+			}
+
+			// how specific: among packs of the same priority the one with more conditions wins
+			int Count() const
+			{
+				return static_cast<int>(female.has_value()) + weaponDrawn.has_value() + sneaking.has_value() + lockedDoor.has_value() +
+				       sprinting.has_value() + racesListed;
 			}
 		};
 
@@ -175,6 +186,14 @@ namespace Clip
 			Conditions           conditions;
 			std::optional<float> swing;  // override the files' markers
 			std::optional<float> impact;
+			std::optional<float> stepStart;
+			std::optional<float> stepEnd;
+			float                standOff{ 55.0f };
+			float                blendIn{ 0.08f };
+			float                blendOut{ 0.15f };
+			float                endStep{ 0.0f };
+			float                maxStep{ 50.0f };
+			float                lunge{ 0.0f };
 			bool                 keepArms{ true };
 			std::vector<int>     animations;
 		};
@@ -664,7 +683,8 @@ namespace Clip
 				a_out.bones[static_cast<std::size_t>(t)] = name;
 			}
 
-			// markers: "Swing" and "Impact" ("HitFrame" too, the game's name for it) on any track
+			// markers: "Swing", "Impact" ("HitFrame" too, the game's name for it), "StepStart", "StepEnd" on any track
+			int marks = 0;
 			for (int t = 0; annotationsAt >= 0 && t < annotationTracks; ++t) {
 				const auto [notesAt, notes] = pack.Array(annotationsAt + 0x18 * t + 8);
 				for (int n = 0; notesAt >= 0 && n < notes; ++n) {
@@ -676,6 +696,12 @@ namespace Clip
 					} else if (Same(text, "swing")) {
 						a_info.swing = time;
 						a_info.swingMarked = true;
+					} else if (Same(text, "stepstart")) {
+						a_info.stepStart = time;
+						marks |= 1;
+					} else if (Same(text, "stepend")) {
+						a_info.stepEnd = time;
+						marks |= 2;
 					}
 				}
 			}
@@ -696,6 +722,7 @@ namespace Clip
 			if (!a_info.swingMarked) {
 				a_info.swing = a_info.impact * 0.6f;
 			}
+			a_info.stepMarked = marks == 3 && a_info.stepEnd > a_info.stepStart;
 		}
 
 		// ---- playing it on the skeleton --------------------------------------------------------------------------------
@@ -862,6 +889,16 @@ namespace Clip
 			if (j.contains("impact") && j["impact"].is_number()) {
 				a_pack.impact = j["impact"].get<float>();
 			}
+			if (j.contains("stepStart") && j["stepStart"].is_number() && j.contains("stepEnd") && j["stepEnd"].is_number()) {
+				a_pack.stepStart = j["stepStart"].get<float>();
+				a_pack.stepEnd = j["stepEnd"].get<float>();
+			}
+			a_pack.standOff = std::clamp(j.value("standOff", a_pack.standOff), 0.0f, 150.0f);
+			a_pack.blendIn = std::clamp(j.value("blendIn", a_pack.blendIn), 0.0f, 1.0f);
+			a_pack.blendOut = std::clamp(j.value("blendOut", a_pack.blendOut), 0.0f, 1.5f);
+			a_pack.endStep = std::clamp(j.value("endStep", a_pack.endStep), -30.0f, 30.0f);
+			a_pack.maxStep = std::clamp(j.value("maxStep", a_pack.maxStep), 0.0f, 150.0f);
+			a_pack.lunge = std::clamp(j.value("lunge", a_pack.lunge), 0.0f, 150.0f);
 			if (!j.contains("conditions")) {
 				return;
 			}
@@ -883,6 +920,7 @@ namespace Clip
 			flag("weaponDrawn", conditions.weaponDrawn, "weapon drawn", "no weapon drawn");
 			flag("sneaking", conditions.sneaking, "sneaking", "not sneaking");
 			flag("lockedDoor", conditions.lockedDoor, "locked door", "unlocked door");
+			flag("sprinting", conditions.sprinting, "sprinting", "not sprinting");
 			if (c.contains("races") && c["races"].is_array()) {
 				conditions.racesListed = true;
 				for (const auto& entry : c["races"]) {
@@ -1005,17 +1043,18 @@ namespace Clip
 			}
 		}
 		if (pool.empty()) {
-			// the highest priority that matches; packs with the same priority are mixed
-			std::optional<int> best;
+			// the highest priority that matches, then the most conditions; packs equal in both are mixed
+			std::optional<std::pair<int, int>> best;
 			for (const auto& pack : packs) {
 				if (pack.animations.empty() || !pack.conditions.Match(a_situation)) {
 					continue;
 				}
-				if (!best || pack.info.priority > *best) {
-					best = pack.info.priority;
+				const std::pair rank{ pack.info.priority, pack.conditions.Count() };
+				if (!best || rank > *best) {
+					best = rank;
 					pool.clear();
 				}
-				if (pack.info.priority == *best) {
+				if (rank == *best) {
 					pool.insert(pool.end(), pack.animations.begin(), pack.animations.end());
 				}
 			}
@@ -1032,6 +1071,25 @@ namespace Clip
 		choice.impact = pack.impact.value_or(info.impact);
 		choice.swing = pack.swing ? *pack.swing : info.swingMarked || !pack.impact ? info.swing : choice.impact * 0.6f;
 		choice.keepArms = pack.keepArms;
+		if (pack.stepStart) {
+			choice.stepStart = *pack.stepStart;
+			choice.stepEnd = *pack.stepEnd;
+			choice.turnEnd = choice.stepEnd;
+		} else if (info.stepMarked) {
+			choice.stepStart = info.stepStart;
+			choice.stepEnd = info.stepEnd;
+			choice.turnEnd = choice.stepEnd;
+		} else {
+			choice.stepStart = choice.impact * 0.12f;
+			choice.stepEnd = choice.impact * 0.70f;
+			choice.turnEnd = choice.impact * 0.65f;
+		}
+		choice.standOff = pack.standOff;
+		choice.blendIn = pack.blendIn;
+		choice.blendOut = pack.blendOut;
+		choice.endStep = pack.endStep;
+		choice.maxStep = pack.maxStep;
+		choice.lunge = pack.lunge;
 		if (Settings::Get().debugLog) {
 			logs::info("Kick animation picked: {} (of {})", animations[static_cast<std::size_t>(index)].file, pool.size());
 		}

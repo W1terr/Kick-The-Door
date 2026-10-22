@@ -69,7 +69,7 @@ namespace Doors
 	// a line in the top left corner (if messages are on)
 	void Notify(const std::string& a_text);
 
-	// kicks that landed on a door so far (only Expert and Master locks keep any)
+	// kicks that landed on a door that hasn't given yet (saved with the game)
 	int  Kicks(RE::FormID a_door);
 	void SetKicks(RE::FormID a_door, int a_kicks);
 

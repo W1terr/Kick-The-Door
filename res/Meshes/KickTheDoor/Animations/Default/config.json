@@ -1,5 +1,8 @@
 {
 	"name": "Kick the Door",
 	"author": "W1ter",
-	"priority": 0
+	"priority": 0,
+	"standOff": 74,
+	"blendOut": 0.3,
+	"endStep": 10
 }

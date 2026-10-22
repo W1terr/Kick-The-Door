@@ -8,13 +8,10 @@ namespace Settings
 	inline constexpr std::size_t kLevels = 5;
 	inline constexpr std::array<const char*, kLevels> kLevelNames{ "Novice", "Apprentice", "Adept", "Expert", "Master" };
 
-	// Expert and Master locks always take two kicks, the others one
-	inline constexpr std::array<int, kLevels> kKicksNeeded{ 1, 1, 1, 2, 2 };
-
 	// the "level" of a door that isn't locked
 	inline constexpr int kUnlocked = -1;
 
-	inline int KicksNeeded(int a_level) { return a_level >= 0 && a_level < static_cast<int>(kLevels) ? kKicksNeeded[a_level] : 1; }
+	inline constexpr int kMaxKicks = 5;
 
 	struct LockRule
 	{
@@ -22,6 +19,7 @@ namespace Settings
 		float staminaNeeded{ 0.0f };  // current stamina a kick needs to do anything
 		float staminaCost{ 0.0f };    // stamina a kick that lands takes
 		int   shoutWords{ 1 };        // words of Unrelenting Force that break it (1 Fus, 2 Fus Ro, 3 Fus Ro Dah)
+		int   kicks{ 1 };             // kicks that must land before it gives (1 - kMaxKicks)
 	};
 
 	struct Values
@@ -36,23 +34,30 @@ namespace Settings
 		// kicking
 		int   kickKey{ 0x22 };          // G
 		int   kickGamepadKey{ Keys::kNone };
-		float holdTime{ 0.3f };         // how long the key is held before the kick starts
+		float holdTime{ 0.0f };         // how long the key is held before the kick starts (0: on press)
 		float kickReach{ 170.0f };      // the farthest the player may stand from the door
 		int   firstPerson{ 1 };         // 0: the kick stays in 1st person, 1: the camera goes to 3rd person for it
 		bool  enterLoadDoors{ true };   // a kicked load door takes you through right away
 		std::string animation{ "auto" };  // animation pack folder (Meshes\KickTheDoor\Animations\<pack>) or "auto"
 
 		std::array<LockRule, kLevels> locks{ {
-			{ true, 120.0f, 30.0f, 1 },
-			{ true, 140.0f, 40.0f, 1 },
-			{ true, 170.0f, 50.0f, 2 },
-			{ true, 200.0f, 60.0f, 3 },
-			{ true, 250.0f, 75.0f, 3 },
+			{ true, 120.0f, 30.0f, 1, 1 },
+			{ true, 140.0f, 40.0f, 1, 1 },
+			{ true, 170.0f, 50.0f, 2, 1 },
+			{ true, 200.0f, 60.0f, 3, 2 },
+			{ true, 250.0f, 75.0f, 3, 2 },
 		} };
 
 		// doors that aren't locked: one kick (or any Unrelenting Force) throws them open
-		LockRule unlocked{ true, 60.0f, 15.0f, 1 };
+		LockRule unlocked{ true, 60.0f, 15.0f, 1, 1 };
 		bool shoutUnlocked{ true };
+
+		// kicking people and creatures (anything that isn't a door)
+		bool  fighting{ true };              // the kick key kicks anywhere: whoever it hits is staggered
+		float kickCost{ 40.0f };             // stamina such a kick takes
+		float kickStagger{ 0.75f };          // stagger strength (the first word of Unrelenting Force: 0.75)
+		bool  sprintKnockdown{ true };       // kicked while sprinting, people in light or no armor fall over
+		float sprintKnockdownForce{ 4.0f };
 
 		// Unrelenting Force
 		float shoutDistance{ 1500.0f };  // doors farther than this from the shout's origin are out of reach
@@ -86,6 +91,8 @@ namespace Settings
 	Values&      Get();
 	// the rule for a lock level, or for unlocked doors (kUnlocked)
 	const LockRule& LockFor(int a_level);
+	// kicks a door of this level takes
+	inline int KicksNeeded(int a_level) { return std::clamp(LockFor(a_level).kicks, 1, kMaxKicks); }
 	const Lists& GetLists();
 	std::mutex&  Lock();  // around changes from the menu
 }

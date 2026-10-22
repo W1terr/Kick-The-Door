@@ -15,11 +15,11 @@ add_requires("nlohmann_json")
 
 -- define targets
 target("KickTheDoor")
-    set_version("1.1.0")
+    set_version("1.3.0")
     add_rules("commonlibsse-ng.plugin", {
         name = "KickTheDoor",
         author = "W1ter",
-        description = "Kick doors open or blast them with Unrelenting Force"
+        description = "Kick doors open or blast them with Unrelenting Force, kick anyone in the way"
     })
 
     add_packages("nlohmann_json")

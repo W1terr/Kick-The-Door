@@ -6,8 +6,9 @@
 //
 // Animation packs: every folder in Data\Meshes\KickTheDoor\Animations is one pack, holding one or more .hkx files (one
 // of them is picked at random for each kick) and an optional config.json (name, author, priority, conditions, timing;
-// see ANIMATIONS.md). The pack with the highest priority whose conditions match the kick plays; the mod's own kick is the
-// pack "Default" (priority 0, no conditions).
+// see ANIMATIONS.md). The pack with the highest priority whose conditions match the kick plays (equal priority: the one
+// with more conditions); the mod's own kicks are the packs "Default" (priority 0, no conditions) and "Sprint" (priority
+// 0, sprinting).
 namespace Clip
 {
 	inline constexpr auto kFolder = "Data/Meshes/KickTheDoor/Animations";
@@ -19,17 +20,27 @@ namespace Clip
 		bool weaponDrawn{ false };
 		bool sneaking{ false };
 		bool lockedDoor{ false };
+		bool sprinting{ false };
 		RE::FormID race{ 0 };
 	};
 
-	// the animation picked for a kick
+	// the animation picked for a kick (times in seconds from its start)
 	struct Choice
 	{
 		int   animation{ -1 };
-		float swing{ 0.0f };   // seconds
-		float impact{ 0.0f };
-		float duration{ 0.0f };
-		bool  keepArms{ true };  // with a weapon drawn the arms keep the weapon stance
+		float swing{ 0.0f };      // the whoosh
+		float impact{ 0.0f };     // the foot meets the door
+		float duration{ 0.0f };   // the animation's last frame
+		float stepStart{ 0.0f };  // the player is moved towards the door from here
+		float stepEnd{ 0.0f };    // to here
+		float turnEnd{ 0.0f };    // facing the door by now
+		float standOff{ 55.0f };  // the step stops this far from the door (units)
+		float blendIn{ 0.08f };   // blends in over this from the start
+		float blendOut{ 0.15f };  // after the last frame, back to what the game animates over this
+		float endStep{ 0.0f };    // the player is moved this far forward while blending out (units)
+		float maxStep{ 50.0f };   // the step towards the target goes this far at most (units)
+		float lunge{ 0.0f };      // with nothing to aim at the player is moved this far forward (units)
+		bool  keepArms{ true };   // with a weapon drawn the arms keep the weapon stance
 	};
 
 	// a pack as the menu shows it
