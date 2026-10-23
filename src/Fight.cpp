@@ -16,7 +16,8 @@ namespace Fight
 		constexpr float kKickHigh = 100.0f;
 		constexpr int   kSightChecks = 3;     // candidates tried for a clear line before giving up
 
-		RE::SpellItem*              spell{ nullptr };  // KTD_KickSpell: StaggerAttackFFContact, hostile
+		RE::SpellItem*              spell{ nullptr };   // KTD_KickSpell: StaggerAttackFFContact, hostile
+		RE::SpellItem*              damage{ nullptr };  // KTD_KickDamage: 2 health
 		RE::BGSSoundDescriptorForm* thud{ nullptr };   // FXMeleePunchLarge
 
 		bool Kickable(RE::PlayerCharacter* a_player, RE::Actor* a_actor)
@@ -117,6 +118,7 @@ namespace Fight
 	void Init()
 	{
 		spell = RE::TESDataHandler::GetSingleton()->LookupForm<RE::SpellItem>(0x801, "KickTheDoor.esp");
+		damage = RE::TESDataHandler::GetSingleton()->LookupForm<RE::SpellItem>(0x803, "KickTheDoor.esp");
 		thud = Forms::Vanilla<RE::BGSSoundDescriptorForm>(0x0AF664);
 		if (!spell) {
 			logs::warn("The kick spell is missing (is KickTheDoor.esp enabled?): kicked people are staggered, but not angered");
@@ -153,6 +155,14 @@ namespace Fight
 		return nullptr;
 	}
 
+	void Damage(RE::PlayerCharacter* a_player, RE::Actor* a_target)
+	{
+		auto* const caster = damage && a_target && !a_target->IsDead() ? a_player->GetMagicCaster(RE::MagicSystem::CastingSource::kInstant) : nullptr;
+		if (caster) {
+			caster->CastSpellImmediate(damage, true, a_target, 1.0f, false, 0.0f, a_player);
+		}
+	}
+
 	void Hit(RE::PlayerCharacter* a_player, RE::Actor* a_target, bool a_sprinting)
 	{
 		const auto& s = Settings::Get();
@@ -164,6 +174,7 @@ namespace Fight
 		} else {
 			Stagger(a_target, from, s.kickStagger);
 		}
+		Damage(a_player, a_target);
 		const char* stays = a_sprinting ? StaysUp(a_target) : "not sprinting";
 		const bool  down = a_sprinting && s.sprintKnockdown && !stays && s.sprintKnockdownForce > 0.0f;
 		if (down) {
@@ -176,7 +187,6 @@ namespace Fight
 				handle.Play();
 			}
 		}
-		RE::ShakeCamera(down ? 0.3f : 0.2f, a_target->GetPosition(), 0.2f);
 		if (s.debugLog) {
 			const char* why = !s.sprintKnockdown || s.sprintKnockdownForce <= 0.0f ? "knockdown off" : stays;
 			logs::info("Kicked {} [{:08X}]: {}", Forms::Name(a_target), a_target->GetFormID(), down ? "knocked down" : std::format("staggered ({})", why));

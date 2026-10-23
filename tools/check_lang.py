@@ -29,11 +29,6 @@ def code_keys():
             found += pair
         found += re.findall(r"Page\{\s*" + LIT, text)
         found += re.findall(r"kGlyphHint = " + LIT, text)
-    # animation pack conditions (Clip.cpp ReadConfig), translated by the menu
-    clip = (ROOT / "src" / "Clip.cpp").read_text(encoding="utf-8")
-    for pair in re.findall(r'flag\("\w+", [\w.]+, ' + LIT + r", " + LIT, clip):
-        found += pair
-    found += ["female", "male"]
     keys = []
     for key in found:
         key = key.encode().decode("unicode_escape")

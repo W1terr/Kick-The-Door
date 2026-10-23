@@ -36,19 +36,6 @@ namespace Hooks
 			static inline REL::Relocation<decltype(thunk)> func;
 		};
 
-		// fallback when the call above isn't where we expect it: the 3rd person camera update
-		struct ThirdPersonUpdate
-		{
-			static void thunk(RE::ThirdPersonState* a_this, RE::BSTSmartPointer<RE::TESCameraState>& a_next)
-			{
-				func(a_this, a_next);
-				if (!skeletonHook) {
-					Kick::ApplyPose();
-				}
-			}
-			static inline REL::Relocation<decltype(thunk)> func;
-		};
-
 		// door animation controllers: after one wrote its node poses, forced doors may get mirrored (Doors)
 		template <int Kind>
 		struct ControllerUpdate
@@ -96,11 +83,8 @@ namespace Hooks
 			PlayerSkeletonsUpdate::func = SKSE::GetTrampoline().write_call<5>(address, PlayerSkeletonsUpdate::thunk);
 			skeletonHook = true;
 		} else {
-			logs::warn("Player skeleton update call not found; the kick is drawn from the camera update instead");
+			logs::error("Player skeleton update call not found: the kick plays without its animation");
 		}
-
-		REL::Relocation<std::uintptr_t> thirdPerson{ RE::VTABLE_ThirdPersonState[0] };
-		ThirdPersonUpdate::func = thirdPerson.write_vfunc(0x3, ThirdPersonUpdate::thunk);
 
 		HookController<0>(RE::VTABLE_NiControllerManager[0]);
 		HookController<1>(RE::VTABLE_NiMultiTargetTransformController[0]);
@@ -109,7 +93,7 @@ namespace Hooks
 		REL::Relocation<std::uintptr_t> player{ RE::VTABLE_PlayerCharacter[0] };
 		PlayerUpdate::func = player.write_vfunc(0xAD, PlayerUpdate::thunk);
 
-		logs::info("Hooks installed ({})", skeletonHook ? "player skeleton update" : "camera update");
+		logs::info("Hooks installed{}", skeletonHook ? "" : " (no kick animation)");
 	}
 
 	void InstallInput()

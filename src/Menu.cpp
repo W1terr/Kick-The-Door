@@ -9,7 +9,6 @@
 
 #include "Menu.h"
 
-#include "Clip.h"
 #include "Doors.h"
 #include "Forms.h"
 #include "Keys.h"
@@ -72,37 +71,6 @@ namespace Menu
 
 		const char* Level(int a_level) { return T(Doors::LevelName(a_level)); }
 
-		void PackList()
-		{
-			const auto& packs = Clip::Packs();
-			if (packs.empty()) {
-				TextColored(kBad, "%s", T("No animation packs found: the kick plays without an animation."));
-				return;
-			}
-			for (const auto& pack : packs) {
-				Bullet();
-				TextColored(pack.animations > 0 ? kGood : kBad, "%s", pack.name.c_str());
-				SameLine();
-				TextDisabled("%s", F("({}, priority {}, {} animation(s))", pack.folder, pack.priority, pack.animations).c_str());
-				Indent();
-				if (!pack.author.empty()) {
-					Text("%s", F("by {}", pack.author).c_str());
-				}
-				std::string when;
-				for (const auto& condition : pack.conditions) {
-					when += std::format("{}{}", when.empty() ? "" : ", ", T(condition.c_str()));
-				}
-				for (const auto& race : pack.races) {
-					when += std::format("{}{}", when.empty() ? "" : ", ", race);
-				}
-				Text("%s", when.empty() ? T("Plays for every kick") : F("Plays when: {}", when).c_str());
-				for (const auto& error : pack.errors) {
-					TextColored(kWarn, "%s", error.c_str());
-				}
-				Unindent();
-			}
-		}
-
 		void __stdcall RenderSettings()
 		{
 			std::scoped_lock lock(Settings::Lock());
@@ -131,9 +99,6 @@ namespace Menu
 			Hint("How long the key is held before the kick starts (0: on press).");
 			SliderFloat(Id("Reach").c_str(), &s.kickReach, 100.0f, 250.0f, T("%.0f units"));
 			Hint("The farthest you can stand from the door. If it is farther than the kick reaches, you step in first.");
-			const char* views[] = { T("Stay in first person"), T("Third person for the kick") };
-			Combo(Id("In first person").c_str(), &s.firstPerson, views, 2);
-			Hint("Without a visible body in first person you won't see the kick. With Improved Camera the view stays in first person.");
 			Checkbox(Id("Go through a kicked load door").c_str(), &s.enterLoadDoors);
 			Hint("A load door whose lock you kick in takes you through once the kick is over. Off: it only stays unlocked.");
 
@@ -149,6 +114,10 @@ namespace Menu
 			BeginDisabled(!s.sprintKnockdown);
 			SliderFloat(Id("Knockdown force", "fight").c_str(), &s.sprintKnockdownForce, 0.0f, 12.0f, "%.1f");
 			EndDisabled();
+			SliderFloat(Id("Sprint slide").c_str(), &s.sprintSlide, 0.0f, 200.0f, T("%.0f units"));
+			Hint("Kicking out of a sprint, the run carries you on from your running speed, slowing down evenly until a little after the hit: at most this far (0: you stop dead).");
+			Checkbox(Id("Kick during attacks").c_str(), &s.comboKicks);
+			Hint("The kick key works in the middle of a swing or a combo: the attack stops and a shorter, quicker kick plays. After the foot lands, attacking again goes straight on with the combo.");
 
 			Heading("Locks");
 			TextWrapped("%s", T("A kick needs at least the stamina shown and takes the cost when it lands; with less, the door only rattles. A door gives after the kicks shown (a weakened door stays weakened)."));
@@ -291,8 +260,6 @@ namespace Menu
 		void __stdcall RenderStatus()
 		{
 			DoorStatus();
-			Heading("Kick animations");
-			PackList();
 		}
 
 		void __stdcall RenderLanguages();

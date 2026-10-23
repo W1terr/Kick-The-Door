@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.4
+
+- New kick for standing and sprinting alike: a high right-leg push kick from a guard (1.33 s, the foot meets the
+  target at 0.77 s; based on the Spartan Kick SE animation, mirrored to the right leg and given the plugin's timing
+  markers).
+- Out of a sprint the run flows into the kick: the animation starts with the knee already coming up (its guard and the
+  slow raise are skipped, the foot lands 0.22 s after the press) and the run carries you on from your running speed,
+  slowing down evenly until a little after the hit ("Sprint slide": at most 120 units), stopping short of walls and
+  people. The game's own sprint ends with the kick, so it doesn't drag you on. The separate sprint
+  kick is gone.
+- Kick during attacks: the kick key works mid-swing and mid-combo. The attack stops and a shorter, quicker kick plays
+  (it starts with the knee coming up, at x1.25, without the long return to standing; the foot lands about 0.3 s after
+  the press). After the foot lands, attacking again cuts the kick short and goes straight on with the combo.
+- The same quicker kick plays whenever a weapon (or fists, or a spell) is out, attacking or not: in a fight every kick
+  is the short one. Sprinting into it, the sprint kick plays. "Kick
+  during attacks" / bDuringAttacks. Animation packs: condition "attacking", config comboStart / comboSpeed / comboEnd.
+- A kick that lands deals 2 damage (fixed), and so does a forced door to whoever it throws over; the player is the one
+  who hurt them (KickTheDoor.esp KTD_KickDamage).
+- Forced doors swing open at x1.9 by default (was x1.5).
+- One kick animation, Meshes\KickTheDoor\kick.hkx, with its timing built in: the animation packs (Animations\<pack>
+  folders, config.json, conditions, sAnimation) and ANIMATIONS.md are gone, and so is the pack list on the Status page.
+- The mod no longer touches the camera: no switch to third person for the kick ("In first person" is gone), no camera
+  shakes, the player isn't turned to face a door (the step still goes towards it) and switching the view during a
+  kick isn't blocked.
+
 ## 1.3
 
 - Kick anything: the kick key now kicks on a press (Hold for 0 by default), and away from doors the kick goes straight

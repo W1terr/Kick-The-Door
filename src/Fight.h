@@ -15,4 +15,8 @@ namespace Fight
 
 	// the foot lands on a_target
 	void Hit(RE::PlayerCharacter* a_player, RE::Actor* a_target, bool a_sprinting);
+
+	// the kick's damage (2 health, fixed) on a_target, dealt by the player: a kick, or a door the player forced throwing
+	// someone over
+	void Damage(RE::PlayerCharacter* a_player, RE::Actor* a_target);
 }

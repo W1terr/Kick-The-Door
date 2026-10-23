@@ -28,7 +28,7 @@ namespace Settings
 		bool  kicking{ true };
 		bool  shouting{ true };
 		bool  knockdown{ true };   // actors right behind a door that bursts open are knocked over
-		float openSpeed{ 1.5f };   // forced doors swing open this much faster than normal
+		float openSpeed{ 1.9f };   // forced doors swing open this much faster than normal
 		bool  openAway{ true };    // forced doors swing away from the hit, whichever way they normally open
 
 		// kicking
@@ -36,9 +36,7 @@ namespace Settings
 		int   kickGamepadKey{ Keys::kNone };
 		float holdTime{ 0.0f };         // how long the key is held before the kick starts (0: on press)
 		float kickReach{ 170.0f };      // the farthest the player may stand from the door
-		int   firstPerson{ 1 };         // 0: the kick stays in 1st person, 1: the camera goes to 3rd person for it
 		bool  enterLoadDoors{ true };   // a kicked load door takes you through right away
-		std::string animation{ "auto" };  // animation pack folder (Meshes\KickTheDoor\Animations\<pack>) or "auto"
 
 		std::array<LockRule, kLevels> locks{ {
 			{ true, 120.0f, 30.0f, 1, 1 },
@@ -58,6 +56,8 @@ namespace Settings
 		float kickStagger{ 0.75f };          // stagger strength (the first word of Unrelenting Force: 0.75)
 		bool  sprintKnockdown{ true };       // kicked while sprinting, people in light or no armor fall over
 		float sprintKnockdownForce{ 4.0f };
+		float sprintSlide{ 120.0f };
+		bool  comboKicks{ true };            // the kick key works during melee swings and combos: the attack stops, the kick plays          // kicked out of a sprint, the run carries the player this far (units) first
 
 		// Unrelenting Force
 		float shoutDistance{ 1500.0f };  // doors farther than this from the shout's origin are out of reach

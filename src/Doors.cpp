@@ -1,6 +1,7 @@
 #include "Doors.h"
 
 #include "DoorModel.h"
+#include "Fight.h"
 #include "Forms.h"
 #include "Lang.h"
 #include "MathUtil.h"
@@ -532,6 +533,7 @@ namespace Doors
 			const bool  ragdoll = race && !race->data.flags.any(RE::RACE_DATA::Flag::kNoKnockdowns) && process && !a_actor->IsOnMount() &&
 			                     !a_actor->IsInKillMove() && !a_actor->IsInRagdollState() && state &&
 			                     state->GetKnockState() == RE::KNOCK_STATE_ENUM::kNormal && Settings::Get().knockdownForce > 0.0f;
+			Fight::Damage(RE::PlayerCharacter::GetSingleton(), a_actor);  // the door hits them
 			if (ragdoll) {
 				process->KnockExplosion(a_actor, a_source, Settings::Get().knockdownForce);
 			} else {
