@@ -119,7 +119,54 @@ namespace Menu
 			Checkbox(Id("Kick during attacks").c_str(), &s.comboKicks);
 			Hint("The kick key works in the middle of a swing or a combo: the attack stops and a shorter, quicker kick plays. After the foot lands, attacking again goes straight on with the combo.");
 
-			Heading("Locks");
+			Heading("Chests");
+			Checkbox(Id("Force chest locks").c_str(), &s.chests);
+			Hint("Look at a locked chest and press the kick key: you turn a little to the left and drive one powerful straight-leg kick into the lock, and once it gives the chest opens. Stamina and kicks per lock level are set below; the crime setting applies too. Unrelenting Force doesn't open chests.");
+			BeginDisabled(!s.chests);
+			Checkbox(Id("Open the chest once it gives").c_str(), &s.openChests);
+			Hint("The chest opens as soon as the lock gives. Off: it only stays unlocked.");
+			Spacing();
+			Text("%s", T("Chest locks"));
+			TextWrapped("%s", T("A kick needs at least the stamina shown (with less you don't kick) and takes the cost when it lands. The lock gives after the kicks shown (a weakened lock stays weakened)."));
+			if (BeginTable("chestLocks", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+				TableSetupColumn(T("Lock"));
+				TableSetupColumn(T("Can be forced"));
+				TableSetupColumn(T("Stamina needed"));
+				TableSetupColumn(T("Stamina cost"));
+				TableSetupColumn(T("Kicks"));
+				TableHeadersRow();
+				for (std::size_t i = 0; i < Settings::kLevels; ++i) {
+					auto& c = s.chestLocks[i];
+					TableNextRow();
+					TableNextColumn();
+					Text("%s", Level(static_cast<int>(i)));
+					TableNextColumn();
+					Checkbox(std::format("##chestOn{}", i).c_str(), &c.enabled);
+					BeginDisabled(!c.enabled);
+					TableNextColumn();
+					SetNextItemWidth(-1.0f);
+					SliderFloat(std::format("##chestNeed{}", i).c_str(), &c.staminaNeeded, 0.0f, 500.0f, "%.0f");
+					TableNextColumn();
+					SetNextItemWidth(-1.0f);
+					SliderFloat(std::format("##chestCost{}", i).c_str(), &c.staminaCost, 0.0f, 200.0f, "%.0f");
+					TableNextColumn();
+					SetNextItemWidth(-1.0f);
+					SliderInt(std::format("##chestKicks{}", i).c_str(), &c.kicks, 1, Settings::kMaxKicks);
+					EndDisabled();
+				}
+				EndTable();
+			}
+			if (Button(Id("Defaults", "chestLocks").c_str())) {
+				const Settings::Values defaults;
+				for (std::size_t i = 0; i < Settings::kLevels; ++i) {
+					s.chestLocks[i].staminaNeeded = defaults.chestLocks[i].staminaNeeded;
+					s.chestLocks[i].staminaCost = defaults.chestLocks[i].staminaCost;
+					s.chestLocks[i].kicks = defaults.chestLocks[i].kicks;
+				}
+			}
+			EndDisabled();
+
+			Heading("Door locks");
 			TextWrapped("%s", T("A kick needs at least the stamina shown and takes the cost when it lands; with less, the door only rattles. A door gives after the kicks shown (a weakened door stays weakened)."));
 			if (BeginTable("locks", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
 				TableSetupColumn(T("Lock"));
@@ -212,6 +259,8 @@ namespace Menu
 			Heading("Feedback");
 			Checkbox(Id("Messages").c_str(), &s.messages);
 			Hint("Not enough stamina, the door gave a little, the lock needs a key...");
+			Checkbox(Id("Pant when out of stamina").c_str(), &s.panting);
+			Hint("Trying to kick without the stamina for it, you pant like when you sprint with none left (in your own voice).");
 			Checkbox(Id("Log details (SKSE log)").c_str(), &s.debugLog);
 		}
 

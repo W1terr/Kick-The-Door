@@ -25,9 +25,10 @@ namespace Doors
 		{
 			RE::BGSSoundDescriptorForm* swing{ nullptr };   // WPNSwingUnarmed
 			RE::BGSSoundDescriptorForm* impact{ nullptr };  // KTD_DoorImpactSD (KickTheDoor.esp)
-			RE::BGSSoundDescriptorForm* rattle{ nullptr };  // DRSLockedSD
-			RE::BGSSoundDescriptorForm* snap{ nullptr };    // UILockpickingPickBreak
-			RE::BGSSoundDescriptorForm* unlock{ nullptr };  // UILockpickingUnlock
+			RE::BGSSoundDescriptorForm* rattle{ nullptr };     // DRSLockedSD
+			RE::BGSSoundDescriptorForm* lockBreak{ nullptr };  // KTD_LockBreakSD (KickTheDoor.esp)
+			RE::BGSSoundDescriptorForm* snap{ nullptr };       // UILockpickingPickBreak, UILockpickingUnlock: without the esp
+			RE::BGSSoundDescriptorForm* unlock{ nullptr };
 		} sounds;
 
 		std::unordered_set<RE::FormID> excluded;
@@ -576,27 +577,6 @@ namespace Doors
 			}
 		}
 
-		void Crime(RE::TESObjectREFR* a_door)
-		{
-			auto* const player = RE::PlayerCharacter::GetSingleton();
-			if (!Settings::Get().crime) {
-				return;
-			}
-			auto* const owner = a_door->GetOwner();
-			if (owner && !a_door->IsAnOwner(player, true, false)) {
-				player->TrespassAlarm(a_door, owner, RE::PackageNS::CRIME_TYPES::kTrespass);
-			}
-		}
-
-		void Noise(RE::TESObjectREFR* a_door, const NiPoint3& a_at)
-		{
-			auto* const player = RE::PlayerCharacter::GetSingleton();
-			auto* const process = player->GetActorRuntimeData().currentProcess;
-			if (Settings::Get().noise && process) {
-				process->SetActorsDetectionEvent(player, a_at, RE::AIFormulas::GetSoundLevelValue(RE::SOUND_LEVEL::kVeryLoud), a_door);
-			}
-		}
-
 		void StartWobble(RE::TESObjectREFR* a_door, const NiPoint3& a_push)
 		{
 			auto* const root = a_door->Get3D();
@@ -639,12 +619,13 @@ namespace Doors
 			logs::warn("The door impact sound is missing: is KickTheDoor.esp enabled in the load order?");
 		}
 		sounds.rattle = Forms::Vanilla<RE::BGSSoundDescriptorForm>(0x023F0E);
+		sounds.lockBreak = RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSSoundDescriptorForm>(0x804, "KickTheDoor.esp");
 		sounds.snap = Forms::Vanilla<RE::BGSSoundDescriptorForm>(0x0C1916);
 		sounds.unlock = Forms::Vanilla<RE::BGSSoundDescriptorForm>(0x0C1917);
 		excluded = Forms::ResolveAll(Settings::GetLists().excludeDoors, "Exclude");
 		included = Forms::ResolveAll(Settings::GetLists().includeDoors, "Include");
-		logs::info("Doors: {} excluded, {} included; sounds {}/{}/{}/{}/{}", excluded.size(), included.size(), sounds.swing != nullptr,
-			sounds.impact != nullptr, sounds.rattle != nullptr, sounds.snap != nullptr, sounds.unlock != nullptr);
+		logs::info("Doors: {} excluded, {} included; sounds {}/{}/{}/{}/{}/{}", excluded.size(), included.size(), sounds.swing != nullptr,
+			sounds.impact != nullptr, sounds.rattle != nullptr, sounds.lockBreak != nullptr, sounds.snap != nullptr, sounds.unlock != nullptr);
 	}
 
 	std::optional<Shape> GetShape(RE::TESObjectREFR* a_ref)
@@ -798,6 +779,27 @@ namespace Doors
 		}
 	}
 
+	void Crime(RE::TESObjectREFR* a_ref)
+	{
+		auto* const player = RE::PlayerCharacter::GetSingleton();
+		if (!Settings::Get().crime) {
+			return;
+		}
+		auto* const owner = a_ref->GetOwner();
+		if (owner && !a_ref->IsAnOwner(player, true, false)) {
+			player->TrespassAlarm(a_ref, owner, RE::PackageNS::CRIME_TYPES::kTrespass);
+		}
+	}
+
+	void Noise(RE::TESObjectREFR* a_ref, const NiPoint3& a_at)
+	{
+		auto* const player = RE::PlayerCharacter::GetSingleton();
+		auto* const process = player->GetActorRuntimeData().currentProcess;
+		if (Settings::Get().noise && process) {
+			process->SetActorsDetectionEvent(player, a_at, RE::AIFormulas::GetSoundLevelValue(RE::SOUND_LEVEL::kVeryLoud), a_ref);
+		}
+	}
+
 	float Distance(const Shape& a_shape, const NiPoint3& a_point)
 	{
 		NiPoint3 offset = a_point - a_shape.center;
@@ -831,8 +833,7 @@ namespace Doors
 			door->AddLockChange();
 			RE::TESLockChangedEvent event{ RE::NiPointer<RE::TESObjectREFR>(door) };
 			RE::ScriptEventSourceHolder::GetSingleton()->SendEvent(&event);
-			Play(sounds.snap, shape.center);
-			Play(sounds.unlock, shape.center);
+			PlayLockBreak(shape.center);
 			Crime(door);
 		}
 		SetKicks(door->GetFormID(), 0);
@@ -874,6 +875,16 @@ namespace Doors
 	void PlaySwing(const NiPoint3& a_at)
 	{
 		Play(sounds.swing, a_at);
+	}
+
+	void PlayLockBreak(const NiPoint3& a_at)
+	{
+		if (sounds.lockBreak) {
+			Play(sounds.lockBreak, a_at);
+		} else {
+			Play(sounds.snap, a_at);
+			Play(sounds.unlock, a_at);
+		}
 	}
 
 	void Notify(const std::string& a_text)
@@ -987,7 +998,7 @@ namespace Doors
 				kicks[door] = done;
 			}
 		}
-		logs::info("{} weakened door(s) in this save", kicks.size());
+		logs::info("{} weakened door(s) and chest(s) in this save", kicks.size());
 	}
 
 	void Revert()

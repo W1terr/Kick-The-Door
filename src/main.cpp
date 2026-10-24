@@ -1,3 +1,4 @@
+#include "Chests.h"
 #include "Clip.h"
 #include "Doors.h"
 #include "Fight.h"
@@ -38,6 +39,7 @@ namespace
 		switch (a_msg->type) {
 		case SKSE::MessagingInterface::kDataLoaded:
 			Doors::Init();
+			Chests::Init();
 			Fight::Init();
 			Shout::Init();
 			Clip::Load();

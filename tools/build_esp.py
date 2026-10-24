@@ -2,6 +2,8 @@
 
   SNDR  KTD_DoorImpactSD   a kick or a shout wave slamming into a door (res/Sound/FX/KickTheDoor/door_impact_0N.wav,
                           made by tools/make_sounds.py), positional, set up like the vanilla battering ram impact
+  SNDR  KTD_LockBreakSD    the lock of a door or a chest giving way: the game's own wpn_impact_blade_metal_01.wav (from
+                          Skyrim - Sounds.bsa, not shipped), quieter by LOCK_BREAK_ATTENUATION, positional, no rumble
 
   SPEL  KTD_KickSpell      the kick landing on someone (src/Fight.cpp): the vanilla StaggerAttackFFContact effect (hostile,
                           Stagger archetype) at 0.75 like the first word of Unrelenting Force (the DLL passes the menu's
@@ -11,7 +13,7 @@
                           detrimental, no resistance, no shader / art / sound) without its undead-only conditions
   SPEL  KTD_KickDamage    the kick's damage, 2 health (fixed); cast by the player, so a kill counts as theirs
 
-The DLL finds them by local form id (0x800, 0x801, 0x803 in KickTheDoor.esp).
+The DLL finds them by local form id (0x800, 0x801, 0x803, 0x804 in KickTheDoor.esp).
 usage: python build_esp.py [output.esp]
 """
 import struct
@@ -32,6 +34,9 @@ DOOR_IMPACT = 0x800
 KICK_SPELL = 0x801
 DAMAGE_EFFECT = 0x802
 DAMAGE_SPELL = 0x803
+LOCK_BREAK = 0x804
+LOCK_BREAK_FILE = "Data\\Sound\\FX\\WPN\\Impact\\Blade\\Metal\\WPN_Impact_Blade_Metal_01.wav"  # vanilla, in the game's BSA
+LOCK_BREAK_ATTENUATION = 9.0  # dB quieter than the recording (it is mastered as loud as a sword hit)
 KICK_DAMAGE = 2.0  # health a landed kick takes, also from someone a bursting door knocks over
 # EnchSilverSwordFFContact's DATA: value modifier on Health, fire and forget, contact, flags hostile | detrimental | no area
 DAMAGE_DATA = bytes.fromhex(
@@ -121,19 +126,21 @@ def main():
     waves = sorted(SOUNDS.glob("door_impact_*.wav"))
     if not waves:
         sys.exit("no sounds: run make_sounds.py first")
-    sounds = [sndr(DOOR_IMPACT, "KTD_DoorImpactSD", ["Data\\Sound\\FX\\KickTheDoor\\" + w.name for w in waves], OUTPUT_MONO_2000_VERB)]
+    sounds = [sndr(DOOR_IMPACT, "KTD_DoorImpactSD", ["Data\\Sound\\FX\\KickTheDoor\\" + w.name for w in waves], OUTPUT_MONO_2000_VERB),
+              sndr(LOCK_BREAK, "KTD_LockBreakSD", [LOCK_BREAK_FILE], OUTPUT_MONO_2000_VERB, freq_variance=5, rumble=0,
+                   attenuation_db=LOCK_BREAK_ATTENUATION)]
     groups = [("SNDR", sounds), ("MGEF", [mgef_damage()]), ("SPEL", [spel_kick(), spel_damage()])]
     body = b"".join(group(label, recs) for label, recs in groups)
     count = sum(len(recs) + 1 for _, recs in groups)
     header = record("TES4", 0, [
-        sub("HEDR", struct.pack("<f", 1.71) + struct.pack("<i", count) + u32(DAMAGE_SPELL + 1)),
+        sub("HEDR", struct.pack("<f", 1.71) + struct.pack("<i", count) + u32(LOCK_BREAK + 1)),
         sub("CNAM", "W1ter"),
         sub("SNAM", "Kick the Door"),
         sub("MAST", "Skyrim.esm"), sub("DATA", b"\0" * 8),
     ], flags=0x200)  # ESL
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(header + body)
-    print(f"wrote {OUT} (1 sound descriptor with {len(waves)} files, 1 effect, 2 spells)")
+    print(f"wrote {OUT} (2 sound descriptors: {len(waves)} impact files, the vanilla lock break sound; 1 effect, 2 spells)")
 
 
 if __name__ == "__main__":

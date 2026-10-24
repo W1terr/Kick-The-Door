@@ -1,5 +1,6 @@
 r"""Builds the mod archive "Kick the Door <version>.zip": KickTheDoor.esp, SKSE\Plugins\KickTheDoor.dll, its ini and
-translations, the kick animation (Meshes\KickTheDoor\kick.hkx) and the door impact sounds. The version is the target's set_version in
+translations, the kick and chest animations (Meshes\KickTheDoor\kick.hkx, chest.hkx and their first person
+kick_1st.hkx, chest_1st.hkx) and the door impact sounds. The version is the target's set_version in
 xmake.lua (a trailing ".0" is left out of the name).
 usage: python package.py [build dir] [output dir]"""
 
@@ -28,6 +29,9 @@ def main():
         "SKSE/Plugins/KickTheDoor.dll": plugin / "KickTheDoor.dll",
         "SKSE/Plugins/KickTheDoor.ini": res / "SKSE" / "Plugins" / "KickTheDoor.ini",
         "Meshes/KickTheDoor/kick.hkx": res / "Meshes" / "KickTheDoor" / "kick.hkx",
+        "Meshes/KickTheDoor/chest.hkx": res / "Meshes" / "KickTheDoor" / "chest.hkx",
+        "Meshes/KickTheDoor/kick_1st.hkx": res / "Meshes" / "KickTheDoor" / "kick_1st.hkx",
+        "Meshes/KickTheDoor/chest_1st.hkx": res / "Meshes" / "KickTheDoor" / "chest_1st.hkx",
     }
     for lang in sorted((res / "SKSE" / "Plugins" / "KickTheDoor" / "lang").glob("*.json")):
         files[f"SKSE/Plugins/KickTheDoor/lang/{lang.name}"] = lang

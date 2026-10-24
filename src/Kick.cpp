@@ -1,11 +1,13 @@
 #include "Kick.h"
 
+#include "Chests.h"
 #include "Clip.h"
 #include "Fight.h"
 #include "Forms.h"
 #include "Keys.h"
 #include "Lang.h"
 #include "MathUtil.h"
+#include "Papyrus.h"
 #include "Ray.h"
 #include "Settings.h"
 
@@ -19,7 +21,8 @@ namespace Kick
 		struct Timing
 		{
 			float swing{ 0.20f };      // the whoosh
-			float impact{ 0.34f };     // the foot meets the door
+			float impact{ 0.34f };     // the foot meets the door (a chest's lock breaks)
+			float open{ 0.34f };       // a forced chest opens
 			float last{ 0.80f };       // the animation's last frame
 			float stepStart{ 0.04f };  // moved towards the door from here
 			float stepEnd{ 0.24f };    // to here
@@ -36,12 +39,14 @@ namespace Kick
 		constexpr float kSlideAfterImpact = 0.2f;   // and the run's momentum dies out this long after the foot lands
 		constexpr float kAssumedRun = 400.0f;       // sprinting, but the speed couldn't be read (units/s)
 		constexpr float kReachSlack = 10.0f;  // the foot reaches a body this much past where a door would be
+		constexpr float kChestReach = 100.0f;  // the farthest the player is moved to kick a chest
 
 		// what the kick goes for
 		enum class Mode
 		{
 			kDoor,  // a door under the crosshair (forced, or only the thud if it can't be)
-			kFree   // straight ahead, wherever the player faces: whoever the foot reaches at the impact gets it
+			kFree,  // straight ahead, wherever the player faces: whoever the foot reaches at the impact gets it
+			kChest  // a locked chest under the crosshair: turned a little to the left, a straight-leg kick into its lock
 		};
 
 		struct State
@@ -59,14 +64,21 @@ namespace Kick
 			float              startTime{ 0.0f };
 			float              elapsed{ 0.0f };  // since the kick started (the blend in)
 			float              blendIn{ 0.0f };
+			Clip::Anim         anim{ Clip::Anim::kKick };
 			RE::ObjectRefHandle door;
+			RE::ObjectRefHandle chest;
 			bool               enoughStamina{ false };
 			bool               swung{ false };
 			bool               resolved{ false };
 			bool               enterAfter{ false };
+			bool               chestBroken{ false };
+			bool               chestOpened{ false };
 			NiPoint3           face;                  // horizontal: where the player faces, or into the door
 			float              step{ 0.0f };          // how far the player steps in (negative: back)
-			float              stepped{ 0.0f };
+			NiPoint3           move;                  // the whole step (door: face * step; chest: to its front)
+			NiPoint3           moved;
+			float              headingFrom{ 0.0f };   // a chest: the player turns to it during the step
+			float              turn{ 0.0f };
 			float              slide{ 0.0f };      // kicked out of a sprint: the run carries the player this far,
 			float              slideTime{ 0.0f };  // over this long from the press, starting at the running speed and
 			float              slid{ 0.0f };       // slowing down evenly
@@ -80,6 +92,40 @@ namespace Kick
 		float Stamina(RE::PlayerCharacter* a_player)
 		{
 			return a_player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kStamina);
+		}
+
+		// the animation's own timing: its markers, and how the mod plays it
+		Timing TimingOf(const Clip::Choice& a_clip)
+		{
+			Timing t;
+			t.last = a_clip.duration;
+			t.impact = std::clamp(a_clip.impact, 0.05f, t.last);
+			t.open = std::clamp(a_clip.open, t.impact, t.last);
+			t.swing = std::clamp(a_clip.swing, 0.0f, t.last);
+			t.stepStart = std::clamp(a_clip.stepStart, 0.0f, t.impact);
+			t.stepEnd = std::clamp(a_clip.stepEnd, t.stepStart + 0.01f, std::max(t.impact, t.stepStart + 0.01f));
+			t.standOff = a_clip.standOff;
+			t.blendIn = a_clip.blendIn;
+			t.blendOut = a_clip.blendOut;
+			return t;
+		}
+
+		// a kick without the stamina for it: the meter flashes and the player pants, the way they do sprinting with
+		// none left (the vanilla OutOfBreath topic, said in their own voice; not again while the last one plays)
+		void OutOfStamina(RE::PlayerCharacter* a_player)
+		{
+			constexpr auto kPantEvery = std::chrono::milliseconds(2500);
+			static auto    last = std::chrono::steady_clock::time_point{};
+			RE::HUDMenu::FlashMeter(RE::ActorValue::kStamina);
+			if (!Settings::Get().panting) {
+				return;
+			}
+			static auto* const topic = Forms::Vanilla<RE::TESTopic>(0x05DD77);  // OutOfBreath (DialogueGeneric)
+			const auto         now = std::chrono::steady_clock::now();
+			if (topic && now - last >= kPantEvery) {
+				last = now;
+				Papyrus::CallMethod(static_cast<RE::Actor*>(a_player), "Say", topic, static_cast<RE::Actor*>(nullptr), false);
+			}
 		}
 
 		bool GameReady()
@@ -123,6 +169,18 @@ namespace Kick
 			auto* const actorState = a_player->AsActorState();
 			return a_player->IsDead() || a_player->IsInRagdollState() || a_player->IsOnMount() || !actorState ||
 			       actorState->GetKnockState() != RE::KNOCK_STATE_ENUM::kNormal || actorState->IsSwimming() || actorState->IsBleedingOut();
+		}
+
+		// first person: the first person animations play (with Improved Camera, which draws the whole body itself,
+		// only their legs)
+		Clip::View CurrentView()
+		{
+			static const bool improvedCamera = REX::W32::GetModuleHandleW(L"ImprovedCameraSE.dll") != nullptr;
+			auto* const       camera = RE::PlayerCamera::GetSingleton();
+			if (!camera || !camera->IsInFirstPerson()) {
+				return Clip::View::kThirdPerson;
+			}
+			return improvedCamera ? Clip::View::kImprovedCamera : Clip::View::kFirstPerson;
 		}
 
 		RE::TESObjectREFR* CrosshairRef()
@@ -256,9 +314,83 @@ namespace Kick
 			return a_step;
 		}
 
+		// the player turns a little to the left and drives the straight right leg into the chest's lock (moved to its front and
+		// turned to it meanwhile); once the last kick it needs lands, it opens at once
+		void StartChest(RE::PlayerCharacter* a_player, const Chests::Target& a_chest)
+		{
+			const auto& lock = Settings::ChestLockFor(a_chest.level);
+			if (Stamina(a_player) < lock.staminaNeeded) {
+				OutOfStamina(a_player);
+				Doors::Notify(Lang::F("Not enough stamina. {} locks need {:.0f} (you have {:.0f}).", Lang::T(Doors::LevelName(a_chest.level)),
+					lock.staminaNeeded, Stamina(a_player)));
+				return;
+			}
+			state = {};
+			state.timing = { .swing = 0.73f, .impact = 0.87f, .open = 0.9f, .last = 1.9f, .stepStart = 0.0f, .stepEnd = 0.33f, .standOff = 69.0f,
+				.blendIn = 0.12f, .blendOut = 0.25f };
+			if (const auto clip = Clip::Get(Clip::Anim::kChest)) {
+				state.animated = true;
+				state.timing = TimingOf(*clip);
+			}
+			const auto position = a_player->GetPosition();
+			auto       stand = Chests::StandAt(a_chest, state.timing.standOff);
+			NiPoint3   move = stand - position;
+			move.z = 0.0f;
+			if (M::Length(move) > kChestReach) {
+				state = {};
+				Doors::Notify(Lang::T("Too far away to force it."));
+				return;
+			}
+			state.active = true;
+			state.mode = Mode::kChest;
+			state.anim = Clip::Anim::kChest;
+			state.chest = a_chest.ref->GetHandle();
+			state.blendIn = state.timing.blendIn;
+			state.face = a_chest.front * -1.0f;
+			state.move = move;
+			// turned to face the chest's front over the step (the shortest way round)
+			state.headingFrom = a_player->GetAngleZ();
+			const float facing = std::atan2(state.face.x, state.face.y);
+			state.turn = std::remainder(facing - state.headingFrom, 2.0f * std::numbers::pi_v<float>);
+			BlockControls(true);
+			EndSprint(a_player);
+			Halt(a_player);
+			if (Settings::Get().debugLog) {
+				logs::info("Forcing chest {} [{:08X}] ({} lock, {} / {} kick(s) so far), moved {:.0f} units, turned {:.0f} deg, stamina {:.0f} / {:.0f}",
+					Forms::Name(a_chest.ref), a_chest.ref->GetFormID(), Doors::LevelName(a_chest.level), Doors::Kicks(a_chest.ref->GetFormID()),
+					Settings::ChestKicksNeeded(a_chest.level), M::Length(move), state.turn / M::kDegrees, Stamina(a_player), lock.staminaNeeded);
+			}
+		}
+
+		// a locked chest under the crosshair: true if the key press went to it (forced, or refused with a message)
+		bool TryChest(RE::PlayerCharacter* a_player)
+		{
+			auto* const ref = CrosshairRef();
+			if (!ref || !Settings::Get().chests || MeleeAttack(a_player->AsActorState()->GetAttackState())) {
+				return false;
+			}
+			Chests::Target chest;
+			const auto     verdict = Chests::Check(ref, a_player->GetPosition(), chest);
+			switch (verdict) {
+			case Chests::Verdict::kNotAChest:
+			case Chests::Verdict::kNotLocked:
+			case Chests::Verdict::kNotLoaded:
+				return false;  // kicked like anything else
+			case Chests::Verdict::kOk:
+				StartChest(a_player, chest);
+				return true;
+			default:
+				Doors::Notify(Chests::Describe(verdict, chest.level));
+				return true;
+			}
+		}
+
 		void Start(RE::PlayerCharacter* a_player)
 		{
 			const auto& s = Settings::Get();
+			if (TryChest(a_player)) {
+				return;
+			}
 			auto* const ref = DoorInFront(a_player, s.kickReach);
 			const auto  position = a_player->GetPosition();
 			const bool  sprinting = a_player->AsActorState()->IsSprinting();
@@ -291,7 +423,7 @@ namespace Kick
 				return;
 			}
 			if (!atDoor && Stamina(a_player) < s.kickCost) {
-				RE::HUDMenu::FlashMeter(RE::ActorValue::kStamina);
+				OutOfStamina(a_player);
 				Doors::Notify(Lang::F("Not enough stamina to kick ({:.0f} needed).", s.kickCost));
 				return;
 			}
@@ -300,17 +432,10 @@ namespace Kick
 			state.active = true;
 			state.sprinting = sprinting;
 			state.attacking = attacking;
-			if (const auto clip = Clip::Get()) {
+			if (const auto clip = Clip::Get(Clip::Anim::kKick)) {
 				state.animated = true;
+				state.timing = TimingOf(*clip);
 				auto& t = state.timing;
-				t.last = clip->duration;
-				t.impact = std::clamp(clip->impact, 0.05f, t.last);
-				t.swing = std::clamp(clip->swing, 0.0f, t.last);
-				t.stepStart = std::clamp(clip->stepStart, 0.0f, t.impact);
-				t.stepEnd = std::clamp(clip->stepEnd, t.stepStart + 0.01f, std::max(t.impact, t.stepStart + 0.01f));
-				t.standOff = clip->standOff;
-				t.blendIn = clip->blendIn;
-				t.blendOut = clip->blendOut;
 				if (quick) {
 					// out of a swing or a combo, or with a weapon out (a fight): a shorter, quicker kick that fits
 					// between the strikes (its slow start and its long return to standing are left out)
@@ -364,6 +489,7 @@ namespace Kick
 			} else {
 				state.slide = 0.0f;
 			}
+			state.move = state.face * state.step;
 			BlockControls(true);
 			if (attacking) {
 				StopAttack(a_player);
@@ -404,7 +530,7 @@ namespace Kick
 			const auto& lock = Settings::LockFor(target.level);
 			if (!state.enoughStamina) {
 				Doors::Hit(target, from, false);
-				RE::HUDMenu::FlashMeter(RE::ActorValue::kStamina);
+				OutOfStamina(a_player);
 				if (target.level == Settings::kUnlocked) {
 					Doors::Notify(Lang::F("Not enough stamina. Kicking a door open needs {:.0f} (you have {:.0f}).", lock.staminaNeeded, Stamina(a_player)));
 				} else {
@@ -434,8 +560,41 @@ namespace Kick
 			Doors::Break(target, from, Doors::Cause::kKick, false);
 		}
 
+		// the foot on the lock: the kick's stamina is taken; the lock breaks with the last kick it needs, before that it only
+		// holds (the kicks so far are kept, like a door's)
+		void ResolveChest(RE::PlayerCharacter* a_player)
+		{
+			const auto ref = state.chest.get();
+			if (!ref) {
+				return;
+			}
+			Chests::Target chest;
+			if (Chests::Check(ref.get(), a_player->GetPosition(), chest) != Chests::Verdict::kOk) {
+				state.chestBroken = !ref->IsLocked();  // unlocked meanwhile: it opens all the same
+				return;
+			}
+			a_player->AsActorValueOwner()->DamageActorValue(RE::ActorValue::kStamina, Settings::ChestLockFor(chest.level).staminaCost);
+			const int done = Doors::Kicks(ref->GetFormID()) + 1;
+			const int needed = Settings::ChestKicksNeeded(chest.level);
+			if (done < needed) {
+				Doors::SetKicks(ref->GetFormID(), done);
+				Chests::Hit(chest);
+				const int   left = needed - done;
+				const auto* level = Lang::T(Doors::LevelName(chest.level));
+				Doors::Notify(left == 1 ? Lang::F("The chest shudders. One more kick should break the {} lock.", level) :
+				                          Lang::F("The chest shudders. {} more kicks should break the {} lock.", left, level));
+				return;
+			}
+			Chests::Break(chest);
+			state.chestBroken = true;
+		}
+
 		void Resolve(RE::PlayerCharacter* a_player)
 		{
+			if (state.mode == Mode::kChest) {
+				ResolveChest(a_player);
+				return;
+			}
 			if (state.mode == Mode::kDoor) {
 				ResolveDoor(a_player);
 				return;
@@ -457,13 +616,17 @@ namespace Kick
 				return;
 			}
 
-			// step in (or back) before the kick; the player keeps facing their own way (the camera is theirs)
-			if (state.step != 0.0f && before < timing.stepEnd) {
+			// step in (or back) before the kick; the player keeps facing their own way (the camera is theirs). At a chest
+			// they also turn to it: the foot has to meet the lock.
+			if (before < timing.stepEnd && (M::Length(state.move) > 0.01f || state.turn != 0.0f)) {
 				const float t = M::Smooth((std::min(state.time, timing.stepEnd) - timing.stepStart) / (timing.stepEnd - timing.stepStart));
-				const float target = state.step * t;
-				if (std::abs(target - state.stepped) > 0.01f) {
-					a_player->SetPosition(a_player->GetPosition() + state.face * (target - state.stepped), true);
-					state.stepped = target;
+				const NiPoint3 target = state.move * t;
+				if (M::Length(target - state.moved) > 0.01f) {
+					a_player->SetPosition(a_player->GetPosition() + (target - state.moved), true);
+					state.moved = target;
+				}
+				if (state.turn != 0.0f) {
+					a_player->SetHeading(state.headingFrom + state.turn * t);
 				}
 			}
 			// out of a sprint the run carries the player on, slowing down evenly to a stop
@@ -486,8 +649,17 @@ namespace Kick
 				state.resolved = true;
 				Resolve(a_player);
 			}
+			// the forced chest opens as soon as the lock gives (its menu pauses the game; the rest plays once it closes)
+			if (state.chestBroken && !state.chestOpened && state.time >= timing.open) {
+				state.chestOpened = true;
+				if (Settings::Get().openChests) {
+					if (const auto chest = state.chest.get()) {
+						Chests::Open(chest.get());
+					}
+				}
+			}
 			// after the hit, with a weapon out, attacking again cuts the kick's end short: the combo goes on
-			if (state.resolved && a_player->AsActorState()->IsWeaponDrawn()) {
+			if (state.resolved && state.mode != Mode::kChest && a_player->AsActorState()->IsWeaponDrawn()) {
 				FreeAttack();
 				if (MeleeAttack(a_player->AsActorState()->GetAttackState()) && state.time < timing.last) {
 					auto& t = state.timing;
@@ -526,7 +698,7 @@ namespace Kick
 			return;
 		}
 		const auto& s = Settings::Get();
-		if (std::exchange(requested, false) && !state.active && (s.kicking || s.fighting) && GameReady() && CanKick(player)) {
+		if (std::exchange(requested, false) && !state.active && (s.kicking || s.fighting || s.chests) && GameReady() && CanKick(player)) {
 			Start(player);
 		}
 		if (state.active) {
@@ -542,7 +714,9 @@ namespace Kick
 			const float in = state.blendIn > 0.0f ? M::Smooth(state.elapsed / state.blendIn) : 1.0f;
 			const float out = t.blendOut > 0.0f ? M::Smooth((t.end() - state.time) / t.blendOut) : (state.time < t.last ? 1.0f : 0.0f);
 			const float weight = std::min(in, out);
-			Clip::Apply(player, state.time, weight, player->AsActorState()->IsWeaponDrawn());  // a weapon out: the arms keep it
+			// a weapon out: the arms keep it while kicking (at a chest the hands are needed)
+			Clip::Apply(player, state.anim, state.time, weight, state.mode != Mode::kChest && player->AsActorState()->IsWeaponDrawn(),
+				CurrentView());
 		}
 	}
 

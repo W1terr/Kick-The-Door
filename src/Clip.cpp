@@ -137,15 +137,18 @@ namespace Clip
 			int         bones{ 0 };  // tracks that found a bone name
 			float       swing{ 0.0f };
 			float       impact{ 0.0f };
+			float       open{ 0.0f };
 			bool        swingMarked{ false };
 			bool        impactMarked{ false };
+			bool        openMarked{ false };
 			float       stepStart{ 0.0f };
 			float       stepEnd{ 0.0f };
 			bool        stepMarked{ false };  // both StepStart and StepEnd
 		};
 
-		Data clip;  // the kick (empty: it didn't load)
-		Info info;
+		constexpr std::size_t    kAnims = kPaths.size();
+		std::array<Data, kAnims> clips;  // per Anim (empty: it didn't load)
+		std::array<Info, kAnims> infos;
 
 		struct Error : std::runtime_error
 		{
@@ -628,7 +631,7 @@ namespace Clip
 				a_out.bones[static_cast<std::size_t>(t)] = name;
 			}
 
-			// markers: "Swing", "Impact" ("HitFrame" too, the game's name for it), "StepStart", "StepEnd" on any track
+			// markers: "Swing", "Impact" ("HitFrame" too, the game's name for it), "StepStart", "StepEnd", "Open" on any track
 			int marks = 0;
 			for (int t = 0; annotationsAt >= 0 && t < annotationTracks; ++t) {
 				const auto [notesAt, notes] = pack.Array(annotationsAt + 0x18 * t + 8);
@@ -647,7 +650,10 @@ namespace Clip
 					} else if (Same(text, "stepend")) {
 						a_info.stepEnd = time;
 						marks |= 2;
-					}
+					} else if (Same(text, "open")) {
+							a_info.open = time;
+							a_info.openMarked = true;
+						}
 				}
 			}
 
@@ -666,6 +672,9 @@ namespace Clip
 			}
 			if (!a_info.swingMarked) {
 				a_info.swing = a_info.impact * 0.6f;
+			}
+			if (!a_info.openMarked) {
+				a_info.open = a_info.impact;
 			}
 			a_info.stepMarked = marks == 3 && a_info.stepEnd > a_info.stepStart;
 		}
@@ -690,6 +699,40 @@ namespace Clip
 			return false;
 		}
 
+		// the hips and legs (COM down): what is seen of the body in first person
+		bool Leg(std::string_view a_bone)
+		{
+			for (const auto part : { "NPC COM"sv, "Pelvis"sv, "Thigh"sv, "Calf"sv, "Foot"sv, "Toe"sv, "Skirt"sv }) {
+				if (a_bone.find(part) != std::string_view::npos) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		// which bones of a clip one skeleton takes
+		enum class Parts
+		{
+			kAll,
+			kArms,   // the 1st person skeleton
+			kLegs,   // with Improved Camera: the first person file's legs...
+			kUpper,  // ...and the 3rd person file's upper body, on the same body
+		};
+
+		bool Takes(Parts a_parts, std::string_view a_bone)
+		{
+			switch (a_parts) {
+			case Parts::kArms:
+				return Arm(a_bone);
+			case Parts::kLegs:
+				return Leg(a_bone);
+			case Parts::kUpper:
+				return !Leg(a_bone);
+			default:
+				return true;
+			}
+		}
+
 		struct Joint
 		{
 			RE::NiPointer<RE::NiAVObject> node;
@@ -701,12 +744,29 @@ namespace Clip
 			bool                          arm{ false };
 		};
 
+		// one skeleton a clip plays on: the 3rd person body, or the 1st person one (arms only)
 		struct Player
 		{
 			RE::NiPointer<RE::NiAVObject> root;
-			std::vector<Joint>            joints;            // per track
-			int                           convention{ -1 };  // -1 unknown, 0 as Havok's matrix, 1 transposed
-		} player;
+			std::size_t                   anim{ 0 };  // the clip the joints are bound for
+			Parts                         parts{ Parts::kAll };
+			std::vector<Joint>            joints;     // per track
+		};
+		Player body;              // Get3D(false)
+		Player bodyLegs;          // Get3D(false) with Improved Camera: the first person file's legs
+		Player view;              // Get3D(true): the arms seen in first person
+		int    convention{ -1 };  // -1 unknown, 0 as Havok's matrix, 1 transposed
+
+		// First person (without Improved Camera): the 3rd person body is drawn for the kick's legs, everything above the
+		// waist squashed to nothing (the way Improved Camera hides the head), so only the hips and legs are seen
+		constexpr float kSquashed = 0.001f;
+		struct Legs
+		{
+			RE::NiPointer<RE::NiAVObject> root;   // the 3rd person root that is shown
+			RE::NiPointer<RE::NiAVObject> spine;  // its NPC Spine [Spn0]
+			float                         spineScale{ 1.0f };
+			bool                          wasHidden{ false };  // the game had it hidden (first person)
+		} legs;
 
 		NiMatrix3 Matrix(const Key& a_key, bool a_transposed)
 		{
@@ -753,85 +813,206 @@ namespace Clip
 			return k;
 		}
 
-		void Bind(RE::NiAVObject* a_root)
+		// every bone back the way the game left it
+		void Restore(Player& a_player)
 		{
-			Release();
-			player.root.reset(a_root);
-			player.joints.assign(clip.bones.size(), {});
+			bool changed = false;
+			for (auto& joint : a_player.joints) {
+				if (joint.node && joint.wrote && M::Same(joint.node->local.rotate, joint.writtenRotate)) {
+					joint.node->local.rotate = joint.baseRotate;
+					joint.node->local.translate = joint.baseTranslate;
+					changed = true;
+				}
+				joint.wrote = false;
+			}
+			if (changed && a_player.root) {
+				RE::NiUpdateData context{};
+				a_player.root->Update(context);
+			}
+			a_player.joints.clear();
+			a_player.root.reset();
+		}
+
+		void Bind(Player& a_player, RE::NiAVObject* a_root, std::size_t a_anim, Parts a_parts)
+		{
+			Restore(a_player);
+			const auto& clip = clips[a_anim];
+			a_player.root.reset(a_root);
+			a_player.anim = a_anim;
+			a_player.parts = a_parts;
+			a_player.joints.assign(clip.bones.size(), {});
 			int found = 0;
 			for (std::size_t t = 0; t < clip.bones.size(); ++t) {
 				const auto& name = clip.bones[t];
-				if (Skipped(name)) {
+				if (Skipped(name) || !Takes(a_parts, name)) {
 					continue;
 				}
 				if (auto* node = a_root->GetObjectByName(RE::BSFixedString(name.c_str()))) {
-					player.joints[t].node.reset(node);
-					player.joints[t].arm = Arm(name);
+					a_player.joints[t].node.reset(node);
+					a_player.joints[t].arm = Arm(name);
 					++found;
 				}
 			}
 			if (Settings::Get().debugLog) {
-				logs::info("Kick animation: {} of {} tracks found a bone on the player", found, clip.bones.size());
+				constexpr std::array<const char*, 4> kParts{ "3rd person skeleton", "1st person arms", "3rd person legs", "3rd person upper body" };
+				logs::info("{}: {} of {} tracks found a bone ({})", kPaths[a_anim], found, clip.bones.size(), kParts[static_cast<std::size_t>(a_parts)]);
 			}
 		}
 
 		// Havok's quaternion should turn into the node's rotation as is; checked once against the animated pose of a
-		// few bones (a kick starts from a standing pose), in case the game stores it the other way round
-		void Detect(const Data& a_clip)
+		// few bones (a kick starts from a standing pose), in case the game stores it the other way round. The first
+		// person files' spine is only a preview (seen from the eye): only the legs are compared there.
+		void Detect(const Player& a_player, const Data& a_clip, bool a_legsOnly)
 		{
 			std::array<float, 2> error{};
 			int                  compared = 0;
-			for (std::size_t t = 0; t < player.joints.size(); ++t) {
+			for (std::size_t t = 0; t < a_player.joints.size(); ++t) {
 				const auto& name = a_clip.bones[t];
-				if (!player.joints[t].node || !(name.find("Thigh") != std::string::npos || name.find("Calf") != std::string::npos ||
-													name.find("Spine") != std::string::npos || name.find("Neck") != std::string::npos)) {
+				const bool  leg = name.find("Thigh") != std::string::npos || name.find("Calf") != std::string::npos;
+				const bool  spine = name.find("Spine") != std::string::npos || name.find("Neck") != std::string::npos;
+				if (!a_player.joints[t].node || !(leg || (spine && !a_legsOnly))) {
 					continue;
 				}
 				for (int c = 0; c < 2; ++c) {
-					error[static_cast<std::size_t>(c)] += M::Angle(player.joints[t].node->local.rotate.Transpose() * Matrix(a_clip.frames[0][t], c == 1));
+					error[static_cast<std::size_t>(c)] += M::Angle(a_player.joints[t].node->local.rotate.Transpose() * Matrix(a_clip.frames[0][t], c == 1));
 				}
 				++compared;
 			}
-			player.convention = compared > 0 && error[1] < error[0] * 0.5f ? 1 : 0;
-			logs::info("Kick animation vs the animated pose ({} bones): {:.0f} deg as is, {:.0f} deg transposed -> {}", compared,
-				error[0] / M::kDegrees, error[1] / M::kDegrees, player.convention == 0 ? "as is" : "transposed");
+			convention = compared > 0 && error[1] < error[0] * 0.5f ? 1 : 0;
+			logs::info("Animation vs the animated pose ({} bones): {:.0f} deg as is, {:.0f} deg transposed -> {}", compared,
+				error[0] / M::kDegrees, error[1] / M::kDegrees, convention == 0 ? "as is" : "transposed");
 		}
 
+		// the clip a_time seconds in on one skeleton (the bones a_parts names), a_weight over what the game animated;
+		// a_skipArms leaves the arms to the game
+		void Play(Player& a_player, RE::NiAVObject* a_root, std::size_t a_anim, Parts a_parts, float a_time, float a_weight, bool a_skipArms)
+		{
+			const auto& clip = clips[a_anim];
+			if (a_root != a_player.root.get() || a_player.anim != a_anim || a_player.parts != a_parts || a_player.joints.size() != clip.bones.size()) {
+				Bind(a_player, a_root, a_anim, a_parts);
+			}
+			// take back what the animation didn't overwrite since the last frame
+			for (auto& joint : a_player.joints) {
+				if (!joint.node) {
+					continue;
+				}
+				if (joint.wrote && M::Same(joint.node->local.rotate, joint.writtenRotate)) {
+					joint.node->local.rotate = joint.baseRotate;
+					joint.node->local.translate = joint.baseTranslate;
+				} else {
+					joint.baseRotate = joint.node->local.rotate;
+					joint.baseTranslate = joint.node->local.translate;
+				}
+				joint.wrote = false;
+			}
+			if (convention < 0 && a_parts != Parts::kArms) {
+				Detect(a_player, clip, a_anim >= kFirstPerson);
+			}
+			const bool  transposed = convention == 1;
+			const float weight = std::clamp(a_weight, 0.0f, 1.0f);
+			for (std::size_t t = 0; t < a_player.joints.size(); ++t) {
+				auto& joint = a_player.joints[t];
+				if (!joint.node || (a_skipArms && joint.arm) || weight <= 0.0f) {
+					continue;
+				}
+				const auto key = Sample(clip, a_time, t);
+				const auto rotate = Matrix(key, transposed);
+				joint.node->local.rotate = weight >= 1.0f ? rotate : M::Slerp(joint.baseRotate, rotate, weight);
+				// translations as offsets from the clip's first frame: the player's own proportions stay
+				joint.node->local.translate = joint.baseTranslate + (key.t - clip.frames[0][t].t) * weight;
+				joint.writtenRotate = joint.node->local.rotate;
+				joint.writtenTranslate = joint.node->local.translate;
+				joint.wrote = true;
+			}
+		}
+
+		// the body back as the game had it: hidden again while the camera is still in first person
+		void HideLegs()
+		{
+			if (!legs.root) {
+				return;
+			}
+			if (legs.spine && legs.spine->local.scale == kSquashed) {
+				legs.spine->local.scale = legs.spineScale;
+			}
+			auto* const camera = RE::PlayerCamera::GetSingleton();
+			if (legs.wasHidden && camera && camera->IsInFirstPerson()) {
+				legs.root->GetFlags().set(RE::NiAVObject::Flag::kHidden);
+			}
+			RE::NiUpdateData context{};
+			legs.root->Update(context);
+			legs = {};
+		}
+
+		// first person: the 3rd person body drawn, squashed above the waist (every frame: the game may hide it again)
+		void ShowLegs(RE::NiAVObject* a_root)
+		{
+			if (legs.root.get() != a_root) {
+				HideLegs();
+				legs.root.reset(a_root);
+				legs.spine.reset(a_root->GetObjectByName("NPC Spine [Spn0]"));
+				legs.spineScale = legs.spine ? legs.spine->local.scale : 1.0f;
+				legs.wasHidden = a_root->GetFlags().all(RE::NiAVObject::Flag::kHidden);
+			}
+			if (legs.spine && legs.spine->local.scale != kSquashed) {
+				legs.spineScale = legs.spine->local.scale;
+				legs.spine->local.scale = kSquashed;
+			}
+			if (a_root->GetFlags().all(RE::NiAVObject::Flag::kHidden)) {
+				legs.wasHidden = true;
+				a_root->GetFlags().reset(RE::NiAVObject::Flag::kHidden);
+			}
+		}
 	}
 
 	void Load()
 	{
 		Release();
-		clip = {};
-		info = {};
-		player.convention = -1;
-		try {
-			Read(kPath, clip, info);
-			logs::info("Kick animation {}: {}, {:.2f} s, {} frames, {} tracks ({} bones), swing {:.2f} s{}, impact {:.2f} s{}", kPath, info.format,
-				info.duration, info.frames, info.tracks, info.bones, info.swing, info.swingMarked ? "" : " (default)", info.impact,
-				info.impactMarked ? "" : " (default)");
-		} catch (const std::exception& e) {
+		convention = -1;
+		for (std::size_t i = 0; i < kAnims; ++i) {
+			auto& clip = clips[i];
+			auto& info = infos[i];
 			clip = {};
-			logs::error("Kick animation {}: {} - the kick plays without it", kPath, e.what());
+			info = {};
+			try {
+				Read(kPaths[i], clip, info);
+				logs::info("Animation {}: {}, {:.2f} s, {} frames, {} tracks ({} bones), swing {:.2f} s{}, impact {:.2f} s{}, open {:.2f} s{}", kPaths[i],
+					info.format, info.duration, info.frames, info.tracks, info.bones, info.swing, info.swingMarked ? "" : " (default)", info.impact,
+					info.impactMarked ? "" : " (default)", info.open, info.openMarked ? "" : " (default)");
+			} catch (const std::exception& e) {
+				clip = {};
+				constexpr std::array<const char*, kAnims> kWithout{ "the kick plays without it", "chests are forced without it",
+					"first person kicks play the 3rd person one", "first person chest kicks play the 3rd person one" };
+				logs::error("Animation {}: {} - {}", kPaths[i], e.what(), kWithout[i]);
+			}
 		}
 	}
 
-	std::optional<Choice> Get()
+	std::optional<Choice> Get(Anim a_anim)
 	{
-		if (clip.frames.empty()) {
+		const auto  index = static_cast<std::size_t>(a_anim);
+		const auto& info = infos[index];
+		if (clips[index].frames.empty()) {
 			return std::nullopt;
 		}
-		// the file's own markers, and how the mod's kick is played (tuned for it)
+		// the file's own markers, and how the mod plays it (tuned for its animations)
 		Choice choice;
 		choice.duration = info.duration;
 		choice.impact = info.impact;
 		choice.swing = info.swing;
+		choice.open = std::clamp(info.open, info.impact, info.duration);
 		if (info.stepMarked) {
 			choice.stepStart = info.stepStart;
 			choice.stepEnd = info.stepEnd;
 		} else {
 			choice.stepStart = choice.impact * 0.12f;
 			choice.stepEnd = choice.impact * 0.70f;
+		}
+		if (a_anim == Anim::kChest) {
+			choice.standOff = 69.0f;  // the straight leg's sole meets the lock 69 units in front of the player
+			choice.blendIn = 0.12f;
+			choice.blendOut = 0.25f;
+			return choice;
 		}
 		choice.standOff = 81.0f;    // the toe reaches 84 units at the impact
 		choice.blendIn = 0.08f;
@@ -843,68 +1024,50 @@ namespace Clip
 		return choice;
 	}
 
-	void Apply(RE::Actor* a_player, float a_time, float a_weight, bool a_keepArms)
+	void Apply(RE::Actor* a_player, Anim a_anim, float a_time, float a_weight, bool a_keepArms, View a_view)
 	{
-		auto* const root = a_player ? a_player->Get3D(false) : nullptr;
-		if (!root || clip.frames.empty()) {
+		auto* const third = a_player ? a_player->Get3D(false) : nullptr;
+		auto* const first = a_player ? a_player->Get3D(true) : nullptr;
+		const auto  index = static_cast<std::size_t>(a_anim);
+		const auto  firstIndex = index + kFirstPerson;
+		if (!third || clips[index].frames.empty()) {
 			return;
 		}
-		if (root != player.root.get() || player.joints.size() != clip.bones.size()) {
-			Bind(root);
-		}
-		// take back what the animation didn't overwrite since the last frame
-		for (auto& joint : player.joints) {
-			if (!joint.node) {
-				continue;
-			}
-			if (joint.wrote && M::Same(joint.node->local.rotate, joint.writtenRotate)) {
-				joint.node->local.rotate = joint.baseRotate;
-				joint.node->local.translate = joint.baseTranslate;
-			} else {
-				joint.baseRotate = joint.node->local.rotate;
-				joint.baseTranslate = joint.node->local.translate;
-			}
-			joint.wrote = false;
-		}
-		if (player.convention < 0) {
-			Detect(clip);
-		}
-		const bool  transposed = player.convention == 1;
-		const float weight = std::clamp(a_weight, 0.0f, 1.0f);
-		for (std::size_t t = 0; t < player.joints.size(); ++t) {
-			auto& joint = player.joints[t];
-			if (!joint.node || (a_keepArms && joint.arm) || weight <= 0.0f) {
-				continue;
-			}
-			const auto key = Sample(clip, a_time, t);
-			const auto rotate = Matrix(key, transposed);
-			joint.node->local.rotate = weight >= 1.0f ? rotate : M::Slerp(joint.baseRotate, rotate, weight);
-			// translations as offsets from the clip's first frame: the player's own proportions stay
-			joint.node->local.translate = joint.baseTranslate + (key.t - clip.frames[0][t].t) * weight;
-			joint.writtenRotate = joint.node->local.rotate;
-			joint.writtenTranslate = joint.node->local.translate;
-			joint.wrote = true;
-		}
+		const bool       firstFile = firstIndex < kAnims && !clips[firstIndex].frames.empty();
 		RE::NiUpdateData context{};
-		root->Update(context);
+		if (a_view == View::kFirstPerson && firstFile && first && first != third) {
+			// the first person file: on the body (its legs are what is seen), its arms on the 1st person skeleton
+			Restore(bodyLegs);
+			Play(body, third, firstIndex, Parts::kAll, a_time, a_weight, false);
+			ShowLegs(third);
+			third->Update(context);
+			if (!a_keepArms) {
+				Play(view, first, firstIndex, Parts::kArms, a_time, a_weight, false);
+				first->Update(context);
+			} else {
+				Restore(view);
+			}
+			return;
+		}
+		Restore(view);
+		HideLegs();
+		if (a_view == View::kImprovedCamera && firstFile) {
+			// Improved Camera draws the whole body and its own arms: the first person file's legs (the foot comes into
+			// view), the 3rd person file's upper body
+			Play(body, third, index, Parts::kUpper, a_time, a_weight, a_keepArms);
+			Play(bodyLegs, third, firstIndex, Parts::kLegs, a_time, a_weight, false);
+		} else {
+			Restore(bodyLegs);
+			Play(body, third, index, Parts::kAll, a_time, a_weight, a_keepArms);
+		}
+		third->Update(context);
 	}
 
 	void Release()
 	{
-		bool changed = false;
-		for (auto& joint : player.joints) {
-			if (joint.node && joint.wrote && M::Same(joint.node->local.rotate, joint.writtenRotate)) {
-				joint.node->local.rotate = joint.baseRotate;
-				joint.node->local.translate = joint.baseTranslate;
-				changed = true;
-			}
-			joint.wrote = false;
-		}
-		if (changed && player.root) {
-			RE::NiUpdateData context{};
-			player.root->Update(context);
-		}
-		player.joints.clear();
-		player.root.reset();
+		Restore(view);
+		Restore(bodyLegs);
+		Restore(body);
+		HideLegs();
 	}
 }

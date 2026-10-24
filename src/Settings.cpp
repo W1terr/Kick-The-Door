@@ -145,6 +145,8 @@ namespace Settings
 					Float("Fight", "fSprintKnockdownForce", v.sprintKnockdownForce, 0.0f, 20.0f),
 					Float("Fight", "fSprintSlide", v.sprintSlide, 0.0f, 200.0f),
 					Bool("Fight", "bDuringAttacks", v.comboKicks),
+					Bool("Chests", "bForceChests", v.chests),
+					Bool("Chests", "bOpenForcedChests", v.openChests),
 					Float("UnrelentingForce", "fMaxDistance", v.shoutDistance, 200.0f, 5000.0f),
 					Bool("UnrelentingForce", "bUnlockedDoors", v.shoutUnlocked),
 					Bool("Locks", "bUnlocked", v.unlocked.enabled),
@@ -158,6 +160,7 @@ namespace Settings
 					Float("Doors", "fMinDoorHeight", v.minDoorHeight, 0.0f, 400.0f),
 					Float("Doors", "fBarredDelay", v.barredDelay, 0.0f, 10.0f),
 					Bool("Feedback", "bMessages", v.messages),
+					Bool("Feedback", "bPanting", v.panting),
 					Bool("Feedback", "bDebugLog", v.debugLog),
 					Text("General", "sLanguage", v.language),
 				};
@@ -172,6 +175,14 @@ namespace Settings
 					f.push_back(Float("Locks", keys[i][2].c_str(), l.staminaCost, 0.0f, 1000.0f));
 					f.push_back(Int("Locks", keys[i][3].c_str(), l.shoutWords, 1, 3));
 					f.push_back(Int("Locks", keys[i][4].c_str(), l.kicks, 1, kMaxKicks));
+				}
+				// [Chests] bNovice, fNoviceStamina, fNoviceStaminaCost, iNoviceKicks, ... (the same names, a section of their own)
+				for (std::size_t i = 0; i < kLevels; ++i) {
+					auto& c = v.chestLocks[i];
+					f.push_back(Bool("Chests", keys[i][0].c_str(), c.enabled));
+					f.push_back(Float("Chests", keys[i][1].c_str(), c.staminaNeeded, 0.0f, 1000.0f));
+					f.push_back(Float("Chests", keys[i][2].c_str(), c.staminaCost, 0.0f, 1000.0f));
+					f.push_back(Int("Chests", keys[i][4].c_str(), c.kicks, 1, kMaxKicks));
 				}
 				return f;
 			}();
@@ -223,6 +234,12 @@ namespace Settings
 		logs::info("Settings: kicking {}, Unrelenting Force {}, knockdown {}, open speed x{}, key {} / {}, quest doors {}",
 			values.kicking, values.shouting, values.knockdown, values.openSpeed, Keys::Name(values.kickKey), Keys::Name(values.kickGamepadKey),
 			values.questDoors);
+		logs::info("  Chests: force {}, open once forced {}", values.chests, values.openChests);
+		for (std::size_t i = 0; i < kLevels; ++i) {
+			const auto& c = values.chestLocks[i];
+			logs::info("    {} chests: {}, stamina {} (cost {}), {} kick(s)", kLevelNames[i], c.enabled ? "on" : "off", c.staminaNeeded, c.staminaCost,
+				c.kicks);
+		}
 		logs::info("  Unlocked doors: kick {} (stamina {}, cost {}), Unrelenting Force {}", values.unlocked.enabled, values.unlocked.staminaNeeded,
 			values.unlocked.staminaCost, values.shoutUnlocked);
 		for (std::size_t i = 0; i < kLevels; ++i) {
@@ -316,6 +333,11 @@ namespace Settings
 	const LockRule& LockFor(int a_level)
 	{
 		return a_level >= 0 && a_level < static_cast<int>(kLevels) ? values.locks[a_level] : values.unlocked;
+	}
+
+	const ChestRule& ChestLockFor(int a_level)
+	{
+		return values.chestLocks[static_cast<std::size_t>(std::clamp(a_level, 0, static_cast<int>(kLevels) - 1))];
 	}
 
 	const Lists& GetLists() { return lists; }

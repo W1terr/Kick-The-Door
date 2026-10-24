@@ -65,11 +65,18 @@ namespace Doors
 	// goes through a load door that is already unlocked
 	void Enter(RE::TESObjectREFR* a_door);
 
+	// breaking an owned lock (door or chest): trespassing if someone sees it (Settings crime)
+	void Crime(RE::TESObjectREFR* a_ref);
+	// the crash is heard around a_at (Settings noise)
+	void Noise(RE::TESObjectREFR* a_ref, const RE::NiPoint3& a_at);
+
 	void PlaySwing(const RE::NiPoint3& a_at);
+	// a lock (door or chest) giving way: a metal hit (KickTheDoor.esp KTD_LockBreakSD, the vanilla lockpicking clicks without it)
+	void PlayLockBreak(const RE::NiPoint3& a_at);
 	// a line in the top left corner (if messages are on)
 	void Notify(const std::string& a_text);
 
-	// kicks that landed on a door that hasn't given yet (saved with the game)
+	// kicks that landed on a door (or a chest's lock) that hasn't given yet (saved with the game)
 	int  Kicks(RE::FormID a_door);
 	void SetKicks(RE::FormID a_door, int a_kicks);
 

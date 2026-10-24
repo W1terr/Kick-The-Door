@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.5
+
+- Kick chests open: look at a locked chest (chests, strongboxes, Dwemer and ruin chests; not wardrobes or bookcases)
+  and press the kick key. You are moved in front of it and turned to it, then, the Assassin's Creed way, standing,
+  turn a little to the left and drive one powerful kick with the straight right leg into the lock (0.87 s in). Once
+  the lock gives (the way a picked lock opens) the chest opens; the rest of the animation plays once you close it.
+  Owned chests count as trespassing like doors, and the crack is heard. Locks that need a key never give. "Force
+  chest locks" / bForceChests, "Open the chest once it gives" / bOpenForcedChests.
+- Chests have their own lock table ("Chest locks" in the menu, [Chests] in the ini): per lock level whether it can be
+  forced, the stamina a kick needs (with less you don't kick), the stamina it takes and the kicks it needs (Novice to
+  Adept 1, Expert and Master 2 by default; a weakened lock stays weakened, saved with the game). Unrelenting Force
+  never opens chests.
+- New animation Meshes\KickTheDoor\chest.hkx (1.9 s), played by the plugin like the kick; its "Open" marker sets when
+  the chest opens.
+- First person kicks: you see your own leg. In first person (without Improved Camera, which shows the whole body
+  itself) Meshes\KickTheDoor\kick_1st.hkx and chest_1st.hkx play instead: the leg is the body's own (with its
+  armor and boots; drawn for the kick, everything above the waist hidden), the arms go a little out to the sides into
+  view. The door kick lifts the foot a little higher there so the hit is in sight; at a chest you look down at the
+  lock. Same length and markers as the 3rd person files; with a weapon out the arms keep it (not at chests).
+- A lock breaking (door or chest) now sounds like metal giving way instead of the vanilla lockpicking clicks: the
+  game's own sword-on-metal hit (WPN_Impact_Blade_Metal_01), 9 dB quieter (KickTheDoor.esp KTD_LockBreakSD).
+- Trying to kick without the stamina for it, you pant like when you sprint with none left: the game's own out of
+  breath voice line, in your character's voice ("Pant when out of stamina" / [Feedback] bPanting).
+- Improved Camera: it draws the whole body in first person itself, so there the first person files' legs play (the
+  foot comes into view) with the 3rd person files' upper body and arms; the body is left to Improved Camera.
+
 ## 1.4
 
 - New kick for standing and sprinting alike: a high right-leg push kick from a guard (1.33 s, the foot meets the

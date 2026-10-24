@@ -5,6 +5,8 @@
 // Pressing the kick key. At a door: the player turns to it, steps in and kicks; at the impact stamina is checked and
 // taken, Expert and Master locks need a second kick, the lock breaks and the door flies open. Anywhere else (Fight): the
 // kick costs stamina up front and goes for whoever is in front, who is staggered (knocked down after a sprint).
+// At a locked chest (Chests): turned a little to the left, the player drives the straight right leg into the lock (it breaks at
+// the impact of the last kick its level needs), and the chest opens at once.
 // The animation (Clip) sets the timing.
 namespace Kick
 {
