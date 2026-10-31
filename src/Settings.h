@@ -42,10 +42,14 @@ namespace Settings
 
 		// kicking
 		int   kickKey{ 0x22 };          // G
+		int   kickKey2{ Keys::kNone };  // set: hold kickKey and press this one (or both at once) to kick
 		int   kickGamepadKey{ Keys::kNone };
+		int   kickGamepadKey2{ Keys::kNone };  // set: hold kickGamepadKey and press this one (or both at once) to kick
 		float holdTime{ 0.0f };         // how long the key is held before the kick starts (0: on press)
 		float kickReach{ 170.0f };      // the farthest the player may stand from the door
 		bool  enterLoadDoors{ true };   // a kicked load door takes you through right away
+		bool  weaponDrawnOnly{ false }; // the kick key (and the Kick power) only does something with a weapon (or fists) out
+		bool  kickPower{ false };       // kick only through the Kick lesser power in the magic menu (the keys don't kick)
 
 		std::array<LockRule, kLevels> locks{ {
 			{ true, 120.0f, 30.0f, 1, 1 },
@@ -79,6 +83,14 @@ namespace Settings
 			{ true, 250.0f, 75.0f, 2 },
 		} };
 
+		// beast forms (no kicks in them): a werewolf's power attack breaks the door in front, so does a vampire lord's
+		// power attack or a hostile spell they aim at a door
+		bool  werewolfDoors{ true };
+		bool  vampireLordDoors{ true };
+		bool  vampireLordMagic{ true };
+		float beastReach{ 230.0f };   // the farthest the door may be from the beast's body for a blow
+		float beastMagicReach{ 1500.0f };
+
 		// Unrelenting Force
 		float shoutDistance{ 1500.0f };  // doors farther than this from the shout's origin are out of reach
 
@@ -104,6 +116,9 @@ namespace Settings
 		std::vector<std::string> shouts;        // shouts whose spells count as Unrelenting Force
 		std::vector<std::string> excludeDoors;  // door base forms or references never forced
 		std::vector<std::string> includeDoors;  // door base forms or references always treated as doors (size check skipped)
+		std::vector<std::string> sceneFactions; // the player in one of these factions is in a scene (OStim, SexLab...): no kicks
+		std::vector<std::string> werewolfRaces;     // the player's race in werewolf form
+		std::vector<std::string> vampireLordRaces;  // and as a vampire lord
 	};
 
 	void Load();

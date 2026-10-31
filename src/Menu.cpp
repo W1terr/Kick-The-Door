@@ -14,6 +14,7 @@
 #include "Keys.h"
 #include "Kick.h"
 #include "Lang.h"
+#include "Power.h"
 #include "Settings.h"
 
 namespace Menu
@@ -89,18 +90,34 @@ namespace Menu
 			Hint("A kicked or shouted door swings away from you, whichever way it normally opens. It also closes from that side; once it is closed it opens its usual way again.");
 
 			Heading("Kicking");
+			if (Checkbox(Id("Kick only as a lesser power").c_str(), &s.kickPower)) {
+				SKSE::GetTaskInterface()->AddTask([] { Power::Sync(); });
+			}
+			Hint("Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.");
+			BeginDisabled(s.kickPower);
 			Text("%s", T("Kick key"));
 			SameLine(190.0f);
 			KeyButton("kb", s.kickKey, false);
+			Text("%s", T("Together with"));
+			SameLine(190.0f);
+			KeyButton("kb2", s.kickKey2, false);
+			Hint("A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.");
 			Text("%s", T("Gamepad button"));
 			SameLine(190.0f);
 			KeyButton("pad", s.kickGamepadKey, true);
+			Text("%s", T("Together with"));
+			SameLine(190.0f);
+			KeyButton("pad2", s.kickGamepadKey2, true);
+			Hint("A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.");
+			EndDisabled();
 			SliderFloat(Id("Hold for").c_str(), &s.holdTime, 0.0f, 1.0f, "%.2f s");
 			Hint("How long the key is held before the kick starts (0: on press).");
 			SliderFloat(Id("Reach").c_str(), &s.kickReach, 100.0f, 250.0f, T("%.0f units"));
 			Hint("The farthest you can stand from the door. If it is farther than the kick reaches, you step in first.");
 			Checkbox(Id("Go through a kicked load door").c_str(), &s.enterLoadDoors);
 			Hint("A load door whose lock you kick in takes you through once the kick is over. Off: it only stays unlocked.");
+			Checkbox(Id("Only with a weapon drawn").c_str(), &s.weaponDrawnOnly);
+			Hint("The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.");
 
 			Heading("Kicking people");
 			Checkbox(Id("Kick people and creatures").c_str(), &s.fighting);
@@ -242,6 +259,20 @@ namespace Menu
 				s.unlocked.staminaCost = defaults.unlocked.staminaCost;
 				s.unlocked.kicks = defaults.unlocked.kicks;
 			}
+
+			Heading("Beast forms");
+			TextWrapped("%s", T("Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force."));
+			Checkbox(Id("Werewolf power attacks break doors").c_str(), &s.werewolfDoors);
+			Hint("A werewolf's power attack breaks the locked (or closed) door in front of it.");
+			Checkbox(Id("Vampire lord power attacks break doors").c_str(), &s.vampireLordDoors);
+			Hint("On the ground, a vampire lord's power attack breaks the door in front of it.");
+			Checkbox(Id("Vampire lord spells break doors").c_str(), &s.vampireLordMagic);
+			Hint("A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.");
+			SliderFloat(Id("Reach", "beast").c_str(), &s.beastReach, 100.0f, 400.0f, T("%.0f units"));
+			Hint("The farthest the door may be from the beast for a blow.");
+			BeginDisabled(!s.vampireLordMagic);
+			SliderFloat(Id("Spell reach").c_str(), &s.beastMagicReach, 300.0f, 4000.0f, T("%.0f units"));
+			EndDisabled();
 
 			Heading("Unrelenting Force");
 			SliderFloat(Id("Reach", "shout").c_str(), &s.shoutDistance, 300.0f, 4000.0f, T("%.0f units"));

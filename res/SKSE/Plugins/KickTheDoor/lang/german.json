@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "Truhe öffnen, sobald sie nachgibt",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "Die Truhe öffnet sich, sobald das Schloss nachgibt. Aus: Sie bleibt nur unverschlossen.",
 	"Too far away to force it.": "Zu weit weg, um sie aufzubrechen.",
-	"This chest can't be forced open.": "Diese Truhe lässt sich nicht aufbrechen."
+	"This chest can't be forced open.": "Diese Truhe lässt sich nicht aufbrechen.",
+	"Only with a weapon drawn": "Nur mit gezogener Waffe",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "Die Tritt-Taste (und die Kraft Tritt) wirkt nur, solange Waffe oder Fäuste gezogen sind. Mit weggesteckter Waffe bleibt die Taste für andere Mods frei.",
+	"Kick only as a lesser power": "Tritt nur als kleinere Kraft",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "Fügt Tritt Euren Kräften hinzu, und nur die Kraft tritt (die Tasten unten tun nichts). Rüstet sie aus und drückt die Schreitaste, um zu treten (ohne Wirkanimation), oder legt sie auf einen Hotkey- oder Favoriten-Mod: praktisch am Gamepad ohne freie Taste. Ausgeschaltet wird die Kraft wieder entfernt.",
+	"Together with": "Zusammen mit",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "Eine zweite Gamepad-Taste: Haltet die erste und drückt diese (oder drückt beide gleichzeitig), um zu treten. Die Taste, die das Paar vervollständigt, tut währenddessen nichts anderes; die zuerst gehaltene behält ihre eigene Aktion, wählt also eine, deren Aktion nicht stört (oder hilft). Keine: Die erste Taste tritt allein.",
+	"Beast forms": "Tiergestalten",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "Werwölfe und Vampirfürsten treten nicht. Stattdessen bricht ein Schlag die Tür: einer genügt für jedes Schloss, das die Türschloss-Tabelle aufbrechen lässt.",
+	"Werewolf power attacks break doors": "Werwolf-Machtangriffe brechen Türen",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "Der Machtangriff eines Werwolfs bricht die verschlossene (oder geschlossene) Tür vor ihm.",
+	"Vampire lord power attacks break doors": "Vampirfürst-Machtangriffe brechen Türen",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "Am Boden bricht der Machtangriff eines Vampirfürsten die Tür vor ihm.",
+	"Vampire lord spells break doors": "Vampirfürst-Zauber brechen Türen",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "Ein feindlicher Zauber, den ein Vampirfürst auf eine Tür richtet (Vampirischer Entzug, Vampirgriff...), bricht sie.",
+	"The farthest the door may be from the beast for a blow.": "Wie weit die Tür höchstens von der Bestie entfernt sein darf, damit ein Schlag sie trifft.",
+	"Spell reach": "Zauberreichweite",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "Eine zweite Taste: Haltet die Tritttaste und drückt diese (oder drückt beide gleichzeitig), um zu treten, zum Beispiel Left Shift + G. Die Taste, die das Paar vervollständigt, tut währenddessen nichts anderes; die zuerst gehaltene behält ihre eigene Aktion. Keine: Die Tritttaste tritt allein."
 }

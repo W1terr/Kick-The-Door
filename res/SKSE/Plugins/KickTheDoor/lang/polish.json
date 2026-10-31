@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "Otwórz skrzynię, gdy puści",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "Skrzynia otwiera się, gdy tylko zamek puści. Wyłączone: pozostaje tylko otwarta z zamka.",
 	"Too far away to force it.": "Za daleko, by to wyważyć.",
-	"This chest can't be forced open.": "Tej skrzyni nie da się wyważyć."
+	"This chest can't be forced open.": "Tej skrzyni nie da się wyważyć.",
+	"Only with a weapon drawn": "Tylko z dobytą bronią",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "Klawisz kopnięcia (i moc Kopnięcie) działa tylko, gdy broń lub pięści są dobyte. Po schowaniu broni klawisz zostaje wolny dla innych modów.",
+	"Kick only as a lesser power": "Kopnięcie tylko jako mniejsza moc",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "Dodaje Kopnięcie do twoich mocy i kopie tylko moc (klawisze poniżej nic nie robią). Wybierz ją i naciśnij klawisz krzyku, aby kopnąć (bez animacji rzucania), albo przypisz ją w modzie skrótów lub ulubionych: przydatne na padzie bez wolnych przycisków. Po wyłączeniu moc zostaje znowu odebrana.",
+	"Together with": "Razem z",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "Drugi przycisk pada: przytrzymaj pierwszy i naciśnij ten (albo naciśnij oba naraz), aby kopnąć. Przycisk, który dopełnia parę, w tym czasie nie robi nic innego; ten przytrzymany jako pierwszy zachowuje swoją akcję, więc wybierz taki, którego akcja nie przeszkadza (albo pomaga). Brak: pierwszy przycisk kopie sam.",
+	"Beast forms": "Bestialne postacie",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "Wilkołaki i wampirzy lordowie nie kopią. Zamiast tego drzwi wyłamuje cios: jeden wystarczy na każdy zamek, który tabela zamków drzwi pozwala wyłamać.",
+	"Werewolf power attacks break doors": "Potężne ataki wilkołaka wyłamują drzwi",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "Potężny atak wilkołaka wyłamuje zamknięte na klucz (lub zamknięte) drzwi przed nim.",
+	"Vampire lord power attacks break doors": "Potężne ataki wampirzego lorda wyłamują drzwi",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "Na ziemi potężny atak wampirzego lorda wyłamuje drzwi przed nim.",
+	"Vampire lord spells break doors": "Zaklęcia wampirzego lorda wyłamują drzwi",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "Wrogie zaklęcie, które wampirzy lord kieruje w drzwi (Wampirzy drenaż, Wampirzy chwyt...), wyłamuje je.",
+	"The farthest the door may be from the beast for a blow.": "Jak daleko od bestii mogą być drzwi, żeby cios je dosięgnął.",
+	"Spell reach": "Zasięg zaklęć",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "Drugi klawisz: przytrzymaj klawisz kopnięcia i naciśnij ten (albo naciśnij oba naraz), aby kopnąć, na przykład Left Shift + G. Klawisz, który dopełnia parę, w tym czasie nie robi nic innego; ten przytrzymany jako pierwszy zachowuje swoją akcję. Brak: klawisz kopnięcia kopie sam."
 }

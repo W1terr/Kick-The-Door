@@ -13,7 +13,12 @@
                           detrimental, no resistance, no shader / art / sound) without its undead-only conditions
   SPEL  KTD_KickDamage    the kick's damage, 2 health (fixed); cast by the player, so a kill counts as theirs
 
-The DLL finds them by local form id (0x800, 0x801, 0x803, 0x804 in KickTheDoor.esp).
+  MGEF  KTD_KickPowerEffect  the Kick power's effect: a script archetype effect with no script (does nothing itself; the
+                          DLL kicks when the power is used), on self, no magnitude / duration / area, no hit effect
+  SPEL  KTD_KickPower     the Kick lesser power (voice slot, instant, free): only given to the player when [Kick]
+                          bKickPower is on; using it (the shout key with it equipped, or a hotkey mod casting it) kicks
+
+The DLL finds them by local form id (0x800, 0x801, 0x803, 0x804, 0x806 in KickTheDoor.esp).
 usage: python build_esp.py [output.esp]
 """
 import struct
@@ -35,6 +40,10 @@ KICK_SPELL = 0x801
 DAMAGE_EFFECT = 0x802
 DAMAGE_SPELL = 0x803
 LOCK_BREAK = 0x804
+POWER_EFFECT = 0x805
+POWER = 0x806
+VOICE_SLOT = 0x025BEE  # VoiceEquip (lesser powers and shouts)
+POWER_DESCRIPTION = "Kick: the door or the chest in front of you, or whoever is in the way."
 LOCK_BREAK_FILE = "Data\\Sound\\FX\\WPN\\Impact\\Blade\\Metal\\WPN_Impact_Blade_Metal_01.wav"  # vanilla, in the game's BSA
 LOCK_BREAK_ATTENUATION = 9.0  # dB quieter than the recording (it is mastered as loud as a sword hit)
 KICK_DAMAGE = 2.0  # health a landed kick takes, also from someone a bursting door knocks over
@@ -122,6 +131,37 @@ def spel_damage():
     ])
 
 
+def mgef_power():
+    data = bytearray(DAMAGE_DATA)
+    # no hit event, no duration / magnitude / area, painless, no hit effect; script archetype, no actor value, on self
+    struct.pack_into("<I", data, 0, 0x10 | 0x200 | 0x400 | 0x800 | 0x4000000 | 0x8000000)
+    struct.pack_into("<I", data, 64, 1)            # archetype: script
+    struct.pack_into("<i", data, 68, -1)           # actor value: none
+    struct.pack_into("<II", data, 80, 1, 0)        # fire and forget, self
+    return record("MGEF", OWN | POWER_EFFECT, [
+        sub("EDID", "KTD_KickPowerEffect"),
+        sub("FULL", "Kick"),
+        sub("MDOB", u32(MENU_DISPLAY)),
+        sub("DATA", bytes(data)),
+        sub("SNDD", b""),
+        sub("DNAM", POWER_DESCRIPTION),
+    ])
+
+
+def spel_power():
+    return record("SPEL", OWN | POWER, [
+        sub("EDID", "KTD_KickPower"),
+        sub("OBND", b"\0" * 12),
+        sub("FULL", "Kick"),
+        sub("ETYP", u32(VOICE_SLOT)),
+        sub("DESC", POWER_DESCRIPTION),
+        # cost 0, flags (manual cost), type 3 lesser power, no charge time, fire and forget, self, instant
+        sub("SPIT", struct.pack("<IIIfIIffI", 0, 0x1, 3, 0.0, 1, 0, 0.0, 0.0, 0)),
+        sub("EFID", u32(OWN | POWER_EFFECT)),
+        sub("EFIT", struct.pack("<fII", 0.0, 0, 0)),
+    ])
+
+
 def main():
     waves = sorted(SOUNDS.glob("door_impact_*.wav"))
     if not waves:
@@ -129,18 +169,18 @@ def main():
     sounds = [sndr(DOOR_IMPACT, "KTD_DoorImpactSD", ["Data\\Sound\\FX\\KickTheDoor\\" + w.name for w in waves], OUTPUT_MONO_2000_VERB),
               sndr(LOCK_BREAK, "KTD_LockBreakSD", [LOCK_BREAK_FILE], OUTPUT_MONO_2000_VERB, freq_variance=5, rumble=0,
                    attenuation_db=LOCK_BREAK_ATTENUATION)]
-    groups = [("SNDR", sounds), ("MGEF", [mgef_damage()]), ("SPEL", [spel_kick(), spel_damage()])]
+    groups = [("SNDR", sounds), ("MGEF", [mgef_damage(), mgef_power()]), ("SPEL", [spel_kick(), spel_damage(), spel_power()])]
     body = b"".join(group(label, recs) for label, recs in groups)
     count = sum(len(recs) + 1 for _, recs in groups)
     header = record("TES4", 0, [
-        sub("HEDR", struct.pack("<f", 1.71) + struct.pack("<i", count) + u32(LOCK_BREAK + 1)),
+        sub("HEDR", struct.pack("<f", 1.71) + struct.pack("<i", count) + u32(POWER + 1)),
         sub("CNAM", "W1ter"),
         sub("SNAM", "Kick the Door"),
         sub("MAST", "Skyrim.esm"), sub("DATA", b"\0" * 8),
     ], flags=0x200)  # ESL
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(header + body)
-    print(f"wrote {OUT} (2 sound descriptors: {len(waves)} impact files, the vanilla lock break sound; 1 effect, 2 spells)")
+    print(f"wrote {OUT} (2 sound descriptors: {len(waves)} impact files, the vanilla lock break sound; 2 effects, 3 spells)")
 
 
 if __name__ == "__main__":

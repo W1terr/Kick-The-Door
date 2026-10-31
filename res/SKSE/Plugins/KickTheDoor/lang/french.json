@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "Ouvrir le coffre une fois forcé",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "Le coffre s'ouvre dès que la serrure cède. Désactivé : il reste seulement déverrouillé.",
 	"Too far away to force it.": "Trop loin pour le forcer.",
-	"This chest can't be forced open.": "Ce coffre ne peut pas être forcé."
+	"This chest can't be forced open.": "Ce coffre ne peut pas être forcé.",
+	"Only with a weapon drawn": "Seulement l'arme dégainée",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "La touche de coup de pied (et le pouvoir Coup de pied) ne fonctionne que si votre arme ou vos poings sont sortis. Arme rangée, la touche reste libre pour d'autres mods.",
+	"Kick only as a lesser power": "Coup de pied seulement comme pouvoir mineur",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "Ajoute Coup de pied à vos pouvoirs, et seul le pouvoir donne des coups de pied (les touches ci-dessous ne font rien). Équipez-le et appuyez sur la touche de cri pour frapper (sans animation d'incantation), ou placez-le dans un mod de raccourcis ou de favoris : pratique sur une manette sans bouton libre. Désactivé, le pouvoir vous est retiré.",
+	"Together with": "Avec",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "Un second bouton de manette : maintenez le premier et appuyez sur celui-ci (ou appuyez sur les deux à la fois) pour frapper. Le bouton qui complète la paire ne fait rien d'autre pendant ce temps ; celui que vous maintenez en premier garde son action, choisissez-en donc un dont l'action ne gêne pas (ou aide). Aucun : le premier bouton frappe seul.",
+	"Beast forms": "Formes bestiales",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "Les loups-garous et les seigneurs vampires ne donnent pas de coups de pied. Un coup brise la porte à la place : un seul suffit pour toute serrure que le tableau des serrures de portes permet de forcer.",
+	"Werewolf power attacks break doors": "Les attaques puissantes du loup-garou brisent les portes",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "L'attaque puissante d'un loup-garou brise la porte verrouillée (ou fermée) devant lui.",
+	"Vampire lord power attacks break doors": "Les attaques puissantes du seigneur vampire brisent les portes",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "Au sol, l'attaque puissante d'un seigneur vampire brise la porte devant lui.",
+	"Vampire lord spells break doors": "Les sorts du seigneur vampire brisent les portes",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "Un sort hostile qu'un seigneur vampire dirige vers une porte (Drain vampirique, Poigne vampirique...) la brise.",
+	"The farthest the door may be from the beast for a blow.": "La distance maximale entre la bête et la porte pour un coup.",
+	"Spell reach": "Portée des sorts",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "Une seconde touche : maintenez la touche de coup de pied et appuyez sur celle-ci (ou appuyez sur les deux à la fois) pour frapper, par exemple Left Shift + G. La touche qui complète la paire ne fait rien d'autre pendant ce temps ; celle que vous maintenez en premier garde son action. Aucune : la touche de coup de pied frappe seule."
 }

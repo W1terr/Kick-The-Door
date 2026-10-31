@@ -1,7 +1,10 @@
 #include "Hooks.h"
 
+#include "Beast.h"
 #include "Doors.h"
+#include "Input.h"
 #include "Kick.h"
+#include "Power.h"
 #include "Shout.h"
 
 namespace Hooks
@@ -16,7 +19,9 @@ namespace Hooks
 			static void thunk(RE::PlayerCharacter* a_this, float a_delta)
 			{
 				func(a_this, a_delta);
+				Power::Update();
 				Kick::Update(a_delta);
+				Beast::Update(a_delta);
 				Shout::Update(a_delta);
 				Doors::Update(a_delta);
 			}
@@ -69,6 +74,7 @@ namespace Hooks
 				for (auto* event = a_events ? *a_events : nullptr; event; event = event->next) {
 					if (const auto* button = event->AsButtonEvent()) {
 						Kick::OnKey(button);
+						Power::OnKey(button);
 					}
 				}
 				return RE::BSEventNotifyControl::kContinue;
@@ -92,6 +98,8 @@ namespace Hooks
 
 		REL::Relocation<std::uintptr_t> player{ RE::VTABLE_PlayerCharacter[0] };
 		PlayerUpdate::func = player.write_vfunc(0xAD, PlayerUpdate::thunk);
+
+		Input::Install();
 
 		logs::info("Hooks installed{}", skeletonHook ? "" : " (no kick animation)");
 	}

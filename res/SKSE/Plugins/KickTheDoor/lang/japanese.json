@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "こじ開けたら宝箱を開く",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "錠が壊れるとすぐに宝箱が開きます。オフ: 解錠されるだけです。",
 	"Too far away to force it.": "遠すぎてこじ開けられません。",
-	"This chest can't be forced open.": "この宝箱はこじ開けられません。"
+	"This chest can't be forced open.": "この宝箱はこじ開けられません。",
+	"Only with a weapon drawn": "武器を構えている時のみ",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "キックキー（とキックのパワー）は武器か拳を構えている時だけ働きます。武器をしまっている間、キーは他のMODに使えます。",
+	"Kick only as a lesser power": "キックをレッサーパワーとしてのみ使う",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "パワーに「キック」を追加し、キックはパワーでのみ行います（下のキーは何もしません）。装備してシャウトキーを押すとキックします（詠唱アニメーションなし）。ホットキーやお気に入りのMODに登録することもできます：空きボタンのないゲームパッドに便利です。オフにするとパワーは再び取り除かれます。",
+	"Together with": "同時押し",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "2つ目のゲームパッドボタン：1つ目を押したままこのボタンを押す（または両方を同時に押す）とキックします。組み合わせを完成させたボタンはその間ほかの動作をしません。先に押したボタンは本来の動作を保つので、動作が邪魔にならない（または役に立つ）ボタンを選んでください。なし：1つ目のボタンだけでキックします。",
+	"Beast forms": "獣の姿",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "ウェアウルフとヴァンパイアロードはキックしません。代わりに一撃で扉を壊します：扉の錠前の表でこじ開けられる錠前なら一撃で十分です。",
+	"Werewolf power attacks break doors": "ウェアウルフの強攻撃で扉を壊す",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "ウェアウルフの強攻撃が目の前の施錠された（または閉じた）扉を壊します。",
+	"Vampire lord power attacks break doors": "ヴァンパイアロードの強攻撃で扉を壊す",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "地上では、ヴァンパイアロードの強攻撃が目の前の扉を壊します。",
+	"Vampire lord spells break doors": "ヴァンパイアロードの魔法で扉を壊す",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "ヴァンパイアロードが扉に向けて放つ敵対的な魔法（吸血鬼の吸収、吸血鬼の掴み…）が扉を壊します。",
+	"The farthest the door may be from the beast for a blow.": "一撃が届く、獣と扉の最大距離。",
+	"Spell reach": "魔法の射程",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "2つ目のキー：キックキーを押したままこのキーを押す（または両方を同時に押す）とキックします。例：Left Shift + G。組み合わせを完成させたキーはその間ほかの動作をしません。先に押したキーは本来の動作を保ちます。なし：キックキーだけでキックします。"
 }

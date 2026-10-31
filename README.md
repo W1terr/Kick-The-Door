@@ -9,9 +9,12 @@ SKSE plugin for Skyrim SE / AE: kick doors open, or blast them open with Unrelen
 - The door bursts open faster than usual and away from you, whichever way it normally opens. Whoever stands right behind it is knocked over (2 damage). A kicked-in load door takes you through.
 - Animations played by the plugin itself, no Nemesis / Pandora / OAR needed: a high right-leg push kick from a guard (based on the Spartan Kick SE animation), the chest kick, first person versions of both (you see your own leg kick, arms a little out to the sides), an own door impact sound, a metal snap when a lock breaks, and panting when you try to kick without the stamina for it.
 - Never forced: locks that need a key, quest doors, barred doors (door replacers like Glorious Doors of Skyrim whose doors unbar themselves before they swing), display cases, hatches and trap triggers. Each lock level can be switched off.
+- Options: kick only with a weapon drawn, a **key pair** for the kick (keyboard or gamepad, e.g. Shift + G), or kick only as a **lesser power** in the magic menu for gamepads with no button left (equip it and use the shout key, or put it on a hotkey mod).
+- Werewolves and vampire lords don't kick: a werewolf's power attack breaks the door, a vampire lord's power attack or spell does too.
+- No kicks during OStim / SexLab scenes, cutscenes or other moments the game holds your controls.
 - Breaking an owned lock (door or chest) in front of witnesses is trespassing, as picking it is.
 - Menu and messages in English, French, German, Italian, Spanish, Polish, Russian, Japanese and Chinese.
 
 Settings: SKSE Menu Framework > Kick the Door, or `SKSE\Plugins\KickTheDoor.ini`.
 
-Requires SKSE and Address Library for SKSE Plugins; SKSE Menu Framework 3 for the in-game menu. KickTheDoor.esp is ESL flagged and only holds the impact sound and the kick's hit and damage (no edits to other records).
+Requires SKSE and Address Library for SKSE Plugins; SKSE Menu Framework 3 for the in-game menu. KickTheDoor.esp is ESL flagged and only holds the impact sound, the kick's hit and damage and the Kick power (no edits to other records).

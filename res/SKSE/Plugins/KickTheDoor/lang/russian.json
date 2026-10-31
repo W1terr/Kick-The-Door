@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "Открывать сундук, когда он поддастся",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "Сундук открывается, как только замок поддастся. Выключено: он лишь остаётся незапертым.",
 	"Too far away to force it.": "Слишком далеко, чтобы взломать.",
-	"This chest can't be forced open.": "Этот сундук нельзя взломать."
+	"This chest can't be forced open.": "Этот сундук нельзя взломать.",
+	"Only with a weapon drawn": "Только с оружием наготове",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "Клавиша удара (и сила «Удар ногой») работает, только когда оружие или кулаки наготове. С убранным оружием клавиша свободна для других модов.",
+	"Kick only as a lesser power": "Удар ногой только как малая сила",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "Добавляет «Удар ногой» в ваши силы, и бьёт только сила (клавиши ниже ничего не делают). Выберите её и нажмите клавишу Крика, чтобы ударить (без анимации сотворения), или назначьте её в мод горячих клавиш или избранного: удобно на геймпаде, где не осталось свободных кнопок. Если выключить, сила снова забирается.",
+	"Together with": "Вместе с",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "Вторая кнопка геймпада: удерживайте первую и нажмите эту (или нажмите обе сразу), чтобы ударить. Кнопка, которая завершает сочетание, при этом больше ничего не делает; та, что зажата первой, сохраняет своё действие, так что выберите ту, чьё действие не мешает (или помогает). Нет: первая кнопка бьёт сама по себе.",
+	"Beast forms": "Звериные облики",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "Вервольфы и лорды-вампиры не бьют ногой. Вместо этого дверь ломает удар: одного хватит для любого замка, который таблица замков дверей позволяет взломать.",
+	"Werewolf power attacks break doors": "Силовые атаки вервольфа ломают двери",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "Силовая атака вервольфа ломает запертую (или закрытую) дверь перед ним.",
+	"Vampire lord power attacks break doors": "Силовые атаки лорда-вампира ломают двери",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "На земле силовая атака лорда-вампира ломает дверь перед ним.",
+	"Vampire lord spells break doors": "Заклинания лорда-вампира ломают двери",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "Враждебное заклинание, которое лорд-вампир направляет на дверь (Вампирское истощение, Хватка вампира...), ломает её.",
+	"The farthest the door may be from the beast for a blow.": "Насколько далеко от зверя может быть дверь для удара.",
+	"Spell reach": "Дальность заклинаний",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "Вторая клавиша: удерживайте клавишу удара и нажмите эту (или нажмите обе сразу), чтобы ударить, например Left Shift + G. Клавиша, которая завершает сочетание, при этом больше ничего не делает; та, что зажата первой, сохраняет своё действие. Нет: клавиша удара бьёт сама по себе."
 }

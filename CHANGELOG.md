@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1
+
+(1.5 was released on Nexus as 2.0.)
+
+- No kicks during scenes: while the player is in an OStim Standalone / NG or SexLab scene (their factions; more in [Scenes]
+  Factions), and while the game or a mod holds the controls (cutscenes, scripted scenes).
+- Key pairs: "Together with" / [Kick] iKey2 (keyboard, mouse) and iGamepadKey2 (gamepad). Hold the kick key or button and
+  press the second one (or press both at once) to kick; the one that completes the pair does nothing else meanwhile.
+- "Kick only as a lesser power" / [Kick] bKickPower (off by default): Kick is in your Powers and only the power kicks.
+  Equipped like any lesser power, the shout key (Z) kicks right away (no casting animation); a hotkey or favorites mod
+  casting it kicks too. Turned off, the power is taken away again.
+- "Only with a weapon drawn" / [Kick] bOnlyWithWeaponDrawn: kicks only while your weapon or fists are out.
+- Beast forms: werewolves and vampire lords no longer kick. A werewolf's power attack breaks the door in front of it; a
+  vampire lord breaks it with a power attack or a hostile spell aimed at it (Beast forms section, [Beasts]).
+
 ## 1.5
 
 - Kick chests open: look at a locked chest (chests, strongboxes, Dwemer and ruin chests; not wardrobes or bookcases)

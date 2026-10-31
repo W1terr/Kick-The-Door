@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "撬開後打開寶箱",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "鎖一壞寶箱就立刻打開。關閉：只會保持解鎖。",
 	"Too far away to force it.": "距離太遠，無法撬開。",
-	"This chest can't be forced open.": "這個寶箱無法撬開。"
+	"This chest can't be forced open.": "這個寶箱無法撬開。",
+	"Only with a weapon drawn": "仅在拔出武器时",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "踢击键（以及踢击能力）只在武器或拳头拔出时生效。收起武器时，该键可留给其他模组使用。",
+	"Kick only as a lesser power": "仅作为次级能力踢击",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "将“踢击”加入你的能力，并且只有该能力会踢（下面的按键不起作用）。装备后按龙吼键即可踢击（没有施法动画），也可以放到快捷键或收藏类模组中：适合没有空闲按钮的手柄。关闭后该能力会再次被移除。",
+	"Together with": "同时按",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "第二个手柄按钮：按住第一个按钮再按这个（或同时按下两个）即可踢击。完成组合的按钮在此期间不做其他事情；先按住的按钮保留其原本的动作，所以请选择动作无碍（或有帮助）的按钮。无：第一个按钮单独踢击。",
+	"Beast forms": "野兽形态",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "狼人和吸血鬼领主不会踢。改为一击破门：门锁表允许强行打开的任何锁，一击就够。",
+	"Werewolf power attacks break doors": "狼人的强力攻击可以破门",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "狼人的强力攻击会击破面前上锁（或关闭）的门。",
+	"Vampire lord power attacks break doors": "吸血鬼领主的强力攻击可以破门",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "在地面上，吸血鬼领主的强力攻击会击破面前的门。",
+	"Vampire lord spells break doors": "吸血鬼领主的法术可以破门",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "吸血鬼领主对准门施放的敌对法术（吸血鬼汲取、吸血鬼之握……）会击破它。",
+	"The farthest the door may be from the beast for a blow.": "一击能够到门时，野兽与门之间的最大距离。",
+	"Spell reach": "法术射程",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "第二个按键：按住踢击键再按这个（或同时按下两个）即可踢击，例如 Left Shift + G。完成组合的按键在此期间不做其他事情；先按住的按键保留其原本的动作。无：踢击键单独踢击。"
 }

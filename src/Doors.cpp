@@ -841,7 +841,7 @@ namespace Doors
 		Noise(door, shape.center);
 		if (Settings::Get().debugLog) {
 			logs::info("{} [{:08X}] ({}{}) {} by {}", Forms::Name(door), door->GetFormID(), LevelName(a_target.level), a_target.teleport ? ", load door" : "",
-				locked ? "broken" : "thrown open", a_cause == Cause::kKick ? "a kick" : "Unrelenting Force");
+				locked ? "broken" : "thrown open", a_cause == Cause::kKick ? "a kick" : a_cause == Cause::kShout ? "Unrelenting Force" : "a beast");
 		}
 
 		if (a_target.teleport) {

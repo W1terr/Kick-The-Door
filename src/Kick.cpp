@@ -153,11 +153,44 @@ namespace Kick
 			}
 		}
 
+		// the player is in a scene of another mod (OStim, SexLab... by their factions), the game holds the controls (a
+		// cutscene, a scripted scene that took them), or they aren't in their own body (werewolf, vampire lord)
+		bool Busy(RE::PlayerCharacter* a_player)
+		{
+			static const auto factions = [] {
+				std::vector<RE::TESFaction*> found;
+				for (const auto id : Forms::ResolveAll(Settings::GetLists().sceneFactions, "Scene faction")) {
+					if (auto* const faction = RE::TESForm::LookupByID<RE::TESFaction>(id)) {
+						found.push_back(faction);
+					}
+				}
+				return found;
+			}();
+			for (auto* const faction : factions) {
+				if (a_player->IsInFaction(faction)) {
+					return true;
+				}
+			}
+			if (auto* const map = RE::ControlMap::GetSingleton(); map && (!map->IsMovementControlsEnabled() || !map->IsFightingControlsEnabled())) {
+				return true;
+			}
+			if (auto* const controls = RE::PlayerControls::GetSingleton(); controls && !state.active) {
+				// another mod switched the player's own handlers off (OStim takes activating away for its scenes)
+				for (auto* handler : std::initializer_list<RE::PlayerInputHandler*>{ controls->movementHandler, controls->activateHandler }) {
+					if (handler && !handler->IsInputEventHandlingEnabled()) {
+						return true;
+					}
+				}
+			}
+			auto* const race = a_player->GetRace();
+			return race && !race->GetPlayable();
+		}
+
 		bool CanKick(RE::PlayerCharacter* a_player)
 		{
 			auto* const actorState = a_player->AsActorState();
 			const auto  attack = actorState ? actorState->GetAttackState() : RE::ATTACK_STATE_ENUM::kNone;
-			return a_player->Is3DLoaded() && !a_player->IsDead() && !a_player->IsOnMount() && !a_player->IsInKillMove() &&
+			return a_player->Is3DLoaded() && !a_player->IsDead() && !a_player->IsOnMount() && !a_player->IsInKillMove() && !Busy(a_player) &&
 			       !a_player->IsInRagdollState() && !a_player->IsInMidair() && actorState &&
 			       actorState->GetSitSleepState() == RE::SIT_SLEEP_STATE::kNormal && actorState->GetKnockState() == RE::KNOCK_STATE_ENUM::kNormal &&
 			       !actorState->IsSwimming() && !actorState->IsBleedingOut() && !actorState->IsFlying() &&
@@ -677,7 +710,10 @@ namespace Kick
 	{
 		const auto& s = Settings::Get();
 		const int   code = Keys::Code(a_event);
-		if (code == Keys::kNone || (code != s.kickKey && code != s.kickGamepadKey)) {
+		// only the Kick power kicks; key pairs are Input's
+		const bool key = code == s.kickKey && s.kickKey2 == Keys::kNone;
+		const bool pad = code == s.kickGamepadKey && s.kickGamepadKey2 == Keys::kNone;
+		if (s.kickPower || code == Keys::kNone || (!key && !pad)) {
 			return;
 		}
 		if (a_event->IsUp()) {
@@ -691,6 +727,11 @@ namespace Kick
 		requested = GameReady();  // a key pressed in a menu doesn't kick once the menu closes
 	}
 
+	void Request()
+	{
+		requested = GameReady();
+	}
+
 	void Update(float a_delta)
 	{
 		auto* const player = RE::PlayerCharacter::GetSingleton();
@@ -698,7 +739,8 @@ namespace Kick
 			return;
 		}
 		const auto& s = Settings::Get();
-		if (std::exchange(requested, false) && !state.active && (s.kicking || s.fighting || s.chests) && GameReady() && CanKick(player)) {
+		if (std::exchange(requested, false) && !state.active && (s.kicking || s.fighting || s.chests) && GameReady() &&
+			(!s.weaponDrawnOnly || player->AsActorState()->IsWeaponDrawn()) && CanKick(player)) {
 			Start(player);
 		}
 		if (state.active) {

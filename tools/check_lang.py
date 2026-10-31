@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCES = [ROOT / "src" / n for n in ("Menu.cpp", "Doors.cpp", "Kick.cpp", "Shout.cpp", "Chests.cpp")]
+SOURCES = [ROOT / "src" / n for n in ("Menu.cpp", "Doors.cpp", "Kick.cpp", "Shout.cpp", "Chests.cpp", "Fight.cpp", "Power.cpp", "Beast.cpp")]
 LANG_DIR = ROOT / "res" / "SKSE" / "Plugins" / "KickTheDoor" / "lang"
 LANGUAGES = ["french", "german", "italian", "spanish", "polish", "russian", "japanese", "chinese"]
 LIT = r'"((?:[^"\\]|\\.)*)"'

@@ -134,10 +134,14 @@ namespace Settings
 					Float("General", "fOpenSpeed", v.openSpeed, 1.0f, 3.0f),
 					Bool("General", "bOpenAwayFromHit", v.openAway),
 					Int("Kick", "iKey", v.kickKey, -1, 281),
+					Int("Kick", "iKey2", v.kickKey2, -1, 281),
 					Int("Kick", "iGamepadKey", v.kickGamepadKey, -1, 281),
+					Int("Kick", "iGamepadKey2", v.kickGamepadKey2, -1, 281),
 					Float("Kick", "fHoldTime", v.holdTime, 0.0f, 2.0f),
 					Float("Kick", "fReach", v.kickReach, 80.0f, 300.0f),
 					Bool("Kick", "bEnterLoadDoors", v.enterLoadDoors),
+					Bool("Kick", "bOnlyWithWeaponDrawn", v.weaponDrawnOnly),
+					Bool("Kick", "bKickPower", v.kickPower),
 					Bool("Fight", "bKickPeople", v.fighting),
 					Float("Fight", "fStaminaCost", v.kickCost, 0.0f, 500.0f),
 					Float("Fight", "fStagger", v.kickStagger, 0.1f, 2.0f),
@@ -147,6 +151,11 @@ namespace Settings
 					Bool("Fight", "bDuringAttacks", v.comboKicks),
 					Bool("Chests", "bForceChests", v.chests),
 					Bool("Chests", "bOpenForcedChests", v.openChests),
+					Bool("Beasts", "bWerewolf", v.werewolfDoors),
+					Bool("Beasts", "bVampireLord", v.vampireLordDoors),
+					Bool("Beasts", "bVampireLordMagic", v.vampireLordMagic),
+					Float("Beasts", "fReach", v.beastReach, 100.0f, 400.0f),
+					Float("Beasts", "fMagicReach", v.beastMagicReach, 300.0f, 4000.0f),
 					Float("UnrelentingForce", "fMaxDistance", v.shoutDistance, 200.0f, 5000.0f),
 					Bool("UnrelentingForce", "bUnlockedDoors", v.shoutUnlocked),
 					Bool("Locks", "bUnlocked", v.unlocked.enabled),
@@ -227,13 +236,34 @@ namespace Settings
 			List(e, "unrelentingforce.shouts", lists.shouts);
 			List(e, "doors.exclude", lists.excludeDoors);
 			List(e, "doors.include", lists.includeDoors);
+			List(e, "scenes.factions", lists.sceneFactions);
+			List(e, "beasts.werewolfraces", lists.werewolfRaces);
+			List(e, "beasts.vampirelordraces", lists.vampireLordRaces);
 		}
 		if (lists.shouts.empty()) {
 			lists.shouts.emplace_back("Skyrim.esm|0x13E07");
 		}
+		// OStim Standalone / NG: OStimExcitementFaction (every scene actor is in it); SexLab: SexLabAnimatingFaction
+		for (const auto* faction : { "OStim.esp|0xD93", "SexLab.esm|0xE50F" }) {
+			if (std::ranges::find(lists.sceneFactions, faction) == lists.sceneFactions.end()) {
+				lists.sceneFactions.emplace_back(faction);
+			}
+		}
+		// WerewolfBeastRace, DLC1VampireBeastRace (mods that rework the forms keep these races)
+		for (auto& [list, race] : { std::pair{ &lists.werewolfRaces, "Skyrim.esm|0xCDD84" }, std::pair{ &lists.vampireLordRaces, "Dawnguard.esm|0x283A" } }) {
+			if (std::ranges::find(*list, race) == list->end()) {
+				list->emplace_back(race);
+			}
+		}
 		logs::info("Settings: kicking {}, Unrelenting Force {}, knockdown {}, open speed x{}, key {} / {}, quest doors {}",
-			values.kicking, values.shouting, values.knockdown, values.openSpeed, Keys::Name(values.kickKey), Keys::Name(values.kickGamepadKey),
+			values.kicking, values.shouting, values.knockdown, values.openSpeed,
+			values.kickKey2 == Keys::kNone ? Keys::Name(values.kickKey) : std::format("{} + {}", Keys::Name(values.kickKey), Keys::Name(values.kickKey2)),
+			values.kickGamepadKey2 == Keys::kNone ? Keys::Name(values.kickGamepadKey) :
+			                                        std::format("{} + {}", Keys::Name(values.kickGamepadKey), Keys::Name(values.kickGamepadKey2)),
 			values.questDoors);
+		logs::info("  Only with a weapon drawn {}, only as the Kick power {}", values.weaponDrawnOnly, values.kickPower);
+		logs::info("  Beast forms: werewolf blows {}, vampire lord blows {} / magic {}, reach {} / {}", values.werewolfDoors, values.vampireLordDoors,
+			values.vampireLordMagic, values.beastReach, values.beastMagicReach);
 		logs::info("  Chests: force {}, open once forced {}", values.chests, values.openChests);
 		for (std::size_t i = 0; i < kLevels; ++i) {
 			const auto& c = values.chestLocks[i];

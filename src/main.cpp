@@ -1,3 +1,4 @@
+#include "Beast.h"
 #include "Chests.h"
 #include "Clip.h"
 #include "Doors.h"
@@ -6,6 +7,7 @@
 #include "Kick.h"
 #include "Lang.h"
 #include "Menu.h"
+#include "Power.h"
 #include "Settings.h"
 #include "Shout.h"
 
@@ -30,6 +32,8 @@ namespace
 	void Reset()
 	{
 		Kick::Reset();
+		Power::Reset();
+		Beast::Reset();
 		Shout::Reset();
 		Doors::Reset();
 	}
@@ -42,15 +46,20 @@ namespace
 			Chests::Init();
 			Fight::Init();
 			Shout::Init();
+			Power::Init();
+			Beast::Init();
 			Clip::Load();
 			Lang::Set(Settings::Get().language);
 			Hooks::InstallInput();
 			Menu::Register();
 			break;
 		case SKSE::MessagingInterface::kPreLoadGame:
+			Reset();
+			break;
 		case SKSE::MessagingInterface::kPostLoadGame:
 		case SKSE::MessagingInterface::kNewGame:
 			Reset();
+			Power::Sync();
 			break;
 		default:
 			break;

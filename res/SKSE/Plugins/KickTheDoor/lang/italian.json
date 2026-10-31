@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "Aprire il forziere appena cede",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "Il forziere si apre appena la serratura cede. Disattivato: resta solo aperto a chiave.",
 	"Too far away to force it.": "Troppo lontano per forzarlo.",
-	"This chest can't be forced open.": "Questo forziere non si può forzare."
+	"This chest can't be forced open.": "Questo forziere non si può forzare.",
+	"Only with a weapon drawn": "Solo con l'arma sguainata",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "Il tasto del calcio (e il potere Calcio) funziona solo con l'arma o i pugni pronti. Con l'arma riposta il tasto resta libero per altre mod.",
+	"Kick only as a lesser power": "Calcio solo come potere minore",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "Aggiunge Calcio ai tuoi poteri, e calcia solo il potere (i tasti qui sotto non fanno nulla). Equipaggialo e premi il tasto dell'urlo per calciare (senza animazione di lancio), oppure mettilo in una mod di tasti rapidi o preferiti: comodo su un gamepad senza tasti liberi. Disattivato, il potere viene tolto di nuovo.",
+	"Together with": "Insieme a",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "Un secondo tasto del gamepad: tieni premuto il primo e premi questo (o premili entrambi insieme) per calciare. Il tasto che completa la coppia nel frattempo non fa nient'altro; quello tenuto per primo mantiene la sua azione, quindi scegline uno la cui azione non dia fastidio (o aiuti). Nessuno: il primo tasto calcia da solo.",
+	"Beast forms": "Forme bestiali",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "I lupi mannari e i signori dei vampiri non calciano. Invece un colpo sfonda la porta: ne basta uno per qualsiasi serratura che la tabella delle serrature delle porte permette di forzare.",
+	"Werewolf power attacks break doors": "Gli attacchi potenti del lupo mannaro sfondano le porte",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "L'attacco potente di un lupo mannaro sfonda la porta chiusa a chiave (o chiusa) davanti a lui.",
+	"Vampire lord power attacks break doors": "Gli attacchi potenti del signore dei vampiri sfondano le porte",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "A terra, l'attacco potente di un signore dei vampiri sfonda la porta davanti a lui.",
+	"Vampire lord spells break doors": "Gli incantesimi del signore dei vampiri sfondano le porte",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "Un incantesimo ostile che un signore dei vampiri punta su una porta (Prosciugamento vampirico, Stretta vampirica...) la sfonda.",
+	"The farthest the door may be from the beast for a blow.": "La distanza massima tra la bestia e la porta per un colpo.",
+	"Spell reach": "Portata degli incantesimi",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "Un secondo tasto: tieni premuto il tasto del calcio e premi questo (o premili entrambi insieme) per calciare, per esempio Left Shift + G. Il tasto che completa la coppia nel frattempo non fa nient'altro; quello tenuto per primo mantiene la sua azione. Nessuno: il tasto del calcio calcia da solo."
 }

@@ -43,6 +43,7 @@ namespace Doors
 	{
 		kKick,
 		kShout,
+		kBeast,  // a werewolf's or vampire lord's blow or spell
 	};
 
 	void Init();  // after the data loaded: sounds, include / exclude lists

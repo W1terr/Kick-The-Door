@@ -116,5 +116,22 @@
 	"Open the chest once it gives": "Abrir el cofre en cuanto cede",
 	"The chest opens as soon as the lock gives. Off: it only stays unlocked.": "El cofre se abre en cuanto cede la cerradura. Desactivado: solo queda sin cerrar.",
 	"Too far away to force it.": "Demasiado lejos para forzarlo.",
-	"This chest can't be forced open.": "Este cofre no se puede forzar."
+	"This chest can't be forced open.": "Este cofre no se puede forzar.",
+	"Only with a weapon drawn": "Solo con el arma desenvainada",
+	"The kick key (and the Kick power) only kicks while your weapon or fists are out. Sheathed, the key is free for other mods.": "La tecla de patada (y el poder Patada) solo funciona con el arma o los puños listos. Con el arma envainada la tecla queda libre para otros mods.",
+	"Kick only as a lesser power": "Patada solo como poder menor",
+	"Adds Kick to your Powers, and only the power kicks (the keys below do nothing). Equip it and press the shout key to kick (no casting animation), or put it on a hotkey or favorites mod: handy on a gamepad with no button left. Turned off, the power is taken away again.": "Añade Patada a tus poderes, y solo el poder da patadas (las teclas de abajo no hacen nada). Equípalo y pulsa la tecla de grito para dar una patada (sin animación de lanzamiento), o ponlo en un mod de atajos o favoritos: útil en un mando sin botones libres. Desactivado, el poder se retira de nuevo.",
+	"Together with": "Junto con",
+	"A second gamepad button: hold the first one and press this one (or press both at once) to kick. The button that completes the pair does nothing else meanwhile; the one you hold first keeps its own action, so pick one whose action doesn't matter (or helps). None: the first button kicks on its own.": "Un segundo botón del mando: mantén el primero y pulsa este (o pulsa ambos a la vez) para dar una patada. El botón que completa la pareja no hace nada más mientras tanto; el que mantienes primero conserva su propia acción, así que elige uno cuya acción no estorbe (o ayude). Ninguno: el primer botón da la patada por sí solo.",
+	"Beast forms": "Formas bestiales",
+	"Werewolves and vampire lords don't kick. A blow breaks the door instead: one is enough for any lock the door lock table lets you force.": "Los hombres lobo y los señores vampiro no dan patadas. En su lugar, un golpe rompe la puerta: basta uno para cualquier cerradura que la tabla de cerraduras de puertas permita forzar.",
+	"Werewolf power attacks break doors": "Los ataques poderosos del hombre lobo rompen puertas",
+	"A werewolf's power attack breaks the locked (or closed) door in front of it.": "El ataque poderoso de un hombre lobo rompe la puerta cerrada con llave (o cerrada) que tiene delante.",
+	"Vampire lord power attacks break doors": "Los ataques poderosos del señor vampiro rompen puertas",
+	"On the ground, a vampire lord's power attack breaks the door in front of it.": "En el suelo, el ataque poderoso de un señor vampiro rompe la puerta que tiene delante.",
+	"Vampire lord spells break doors": "Los hechizos del señor vampiro rompen puertas",
+	"A hostile spell a vampire lord aims at a door (Vampiric Drain, Vampiric Grip...) breaks it.": "Un hechizo hostil que un señor vampiro apunta a una puerta (Drenaje vampírico, Garra vampírica...) la rompe.",
+	"The farthest the door may be from the beast for a blow.": "La distancia máxima entre la bestia y la puerta para un golpe.",
+	"Spell reach": "Alcance de los hechizos",
+	"A second key: hold the kick key and press this one (or press both at once) to kick, for example Left Shift + G. The key that completes the pair does nothing else meanwhile; the one you hold first keeps its own action. None: the kick key kicks on its own.": "Una segunda tecla: mantén la tecla de patada y pulsa esta (o pulsa ambas a la vez) para dar una patada, por ejemplo Left Shift + G. La tecla que completa la pareja no hace nada más mientras tanto; la que mantienes primero conserva su propia acción. Ninguna: la tecla de patada da la patada por sí sola."
 }
